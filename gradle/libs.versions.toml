@@ -1,0 +1,33 @@
+[versions]
+# Kotlin
+kotlin = "2.1.0"
+
+# Gradle Plugins
+changelog = "2.2.1"
+intelliJPlatform = "2.2.1"
+kover = "0.9.0"
+
+# Libraries
+kotlinxSerialization = "1.7.3"
+kotlinxCoroutines = "1.9.0"
+toml4j = "0.7.2"
+snakeyaml = "2.3"
+
+# Testing
+junit = "5.11.3"
+mockk = "1.13.13"
+
+[plugins]
+kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+intelliJPlatform = { id = "org.jetbrains.intellij.platform", version.ref = "intelliJPlatform" }
+changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+[libraries]
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+toml4j = { group = "com.moandjiezana.toml", name = "toml4j", version.ref = "toml4j" }
+snakeyaml = { group = "org.yaml", name = "snakeyaml", version.ref = "snakeyaml" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }

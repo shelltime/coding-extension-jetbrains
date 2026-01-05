@@ -1,0 +1,73 @@
+<idea-plugin>
+    <id>xyz.shelltime.extension-jetbrains</id>
+    <name>ShellTime</name>
+    <vendor email="support@shelltime.xyz" url="https://shelltime.xyz">ShellTime</vendor>
+
+    <description><![CDATA[
+    Track your coding time and productivity across projects with ShellTime.
+    Automatic language detection, project analytics, and detailed activity insights.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends optional="true" config-file="git-features.xml">Git4Idea</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Application-level service -->
+        <applicationService
+            serviceImplementation="xyz.shelltime.jetbrains.services.ShellTimeService"/>
+
+        <!-- Project-level service -->
+        <projectService
+            serviceImplementation="xyz.shelltime.jetbrains.services.ShellTimeProjectService"/>
+
+        <!-- Status bar widget -->
+        <statusBarWidgetFactory
+            id="ShellTimeStatusBarWidget"
+            implementation="xyz.shelltime.jetbrains.ui.StatusBarWidgetFactory"
+            order="after encodingWidget"/>
+
+        <!-- Settings/Preferences -->
+        <applicationConfigurable
+            parentId="tools"
+            instance="xyz.shelltime.jetbrains.config.ShellTimeConfigurable"
+            id="xyz.shelltime.jetbrains.config.ShellTimeConfigurable"
+            displayName="ShellTime"/>
+
+        <!-- Notification group -->
+        <notificationGroup
+            id="ShellTime"
+            displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <group id="ShellTime.Menu" text="ShellTime" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </group>
+
+        <action id="ShellTime.ShowStatus"
+                class="xyz.shelltime.jetbrains.actions.ShowStatusAction"
+                text="Show Status"
+                description="Display ShellTime daemon connection status">
+            <add-to-group group-id="ShellTime.Menu"/>
+        </action>
+
+        <action id="ShellTime.Flush"
+                class="xyz.shelltime.jetbrains.actions.FlushAction"
+                text="Flush Heartbeats"
+                description="Manually flush pending heartbeats to the daemon">
+            <add-to-group group-id="ShellTime.Menu"/>
+        </action>
+    </actions>
+
+    <applicationListeners>
+        <listener
+            class="xyz.shelltime.jetbrains.listeners.FileSaveListener"
+            topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+    </applicationListeners>
+
+    <projectListeners>
+        <listener
+            class="xyz.shelltime.jetbrains.listeners.FileEditorListener"
+            topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
+</idea-plugin>

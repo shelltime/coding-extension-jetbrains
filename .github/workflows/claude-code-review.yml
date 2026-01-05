@@ -1,0 +1,35 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review_mode: true
+          review_instructions: |
+            Please review this PR for:
+            1. Code quality and Kotlin best practices
+            2. Potential bugs or logic errors
+            3. Security vulnerabilities
+            4. Performance issues
+            5. Test coverage
+            6. Documentation
+
+            Focus on JetBrains plugin development patterns and IntelliJ Platform API usage.
