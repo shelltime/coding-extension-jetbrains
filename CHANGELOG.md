@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.3](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.2...v0.0.3) (2026-01-06)
+
+
+### Bug Fixes
+
+* **ci:** add GITHUB_TOKEN to checkout action for self-hosted runner ([669ea22](https://github.com/shelltime/coding-extension-jetbrains/commit/669ea22808959537b59e6ad5b00f549f90bd2749))
+* **ci:** add GITHUB_TOKEN to checkout action for self-hosted runner ([aacb473](https://github.com/shelltime/coding-extension-jetbrains/commit/aacb4738b858dcc940f88bdb882f9c23f5722ee6))
+* **ci:** add persist-credentials false to checkout action ([a0e7da7](https://github.com/shelltime/coding-extension-jetbrains/commit/a0e7da7b582cb18860fceab23cf3f564ee19161f))
+
 ## [0.0.2](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.1...v0.0.2) (2026-01-06)
 
 
