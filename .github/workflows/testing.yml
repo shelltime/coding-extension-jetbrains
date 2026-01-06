@@ -1,0 +1,41 @@
+name: Testing
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: jp-arm-oracle
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build Plugin
+        run: ./gradlew buildPlugin
+
+      - name: Run Tests
+        run: ./gradlew test
+
+      - name: Generate Coverage Report
+        run: ./gradlew koverXmlReport
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./build/reports/kover/report.xml
+          fail_ci_if_error: false
