@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -96,7 +97,11 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            // Use specific IDE versions that exist instead of recommended()
+            // which may select non-existent future versions
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.1.7")
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.4")
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.3.1")
         }
     }
 }
