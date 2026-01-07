@@ -27,4 +27,10 @@ object Constants {
 
     /** Notification group ID */
     const val NOTIFICATION_GROUP_ID = "ShellTime"
+
+    /** Version check API endpoint path */
+    const val VERSION_CHECK_ENDPOINT = "/api/v1/cli/version-check"
+
+    /** Version check timeout in milliseconds */
+    const val VERSION_CHECK_TIMEOUT_MS = 5_000L
 }
