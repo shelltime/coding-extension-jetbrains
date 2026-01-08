@@ -114,3 +114,13 @@ data class StatusResponse(
     val platform: String? = null,
     val goVersion: String? = null
 )
+
+/**
+ * Response from version check API
+ */
+@Serializable
+data class VersionCheckResponse(
+    val isLatest: Boolean,
+    val latestVersion: String,
+    val version: String
+)

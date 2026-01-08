@@ -43,5 +43,11 @@ data class ShellTimeConfig(
     val debug: Boolean = false,
 
     /** Patterns to exclude from tracking */
-    val exclude: List<String> = emptyList()
+    val exclude: List<String> = emptyList(),
+
+    /** API endpoint for version check */
+    val apiEndpoint: String? = null,
+
+    /** Web endpoint for update command */
+    val webEndpoint: String? = null
 )

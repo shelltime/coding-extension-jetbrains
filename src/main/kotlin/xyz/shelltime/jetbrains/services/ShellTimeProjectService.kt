@@ -12,6 +12,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatCollector
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSender
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSenderCallback
+import xyz.shelltime.jetbrains.version.VersionChecker
+import kotlinx.coroutines.*
 
 /**
  * Project-level service for ShellTime
@@ -25,7 +27,9 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
 
     private lateinit var collector: HeartbeatCollector
     private lateinit var sender: HeartbeatSender
+    private var versionChecker: VersionChecker? = null
     private var statusCallback: HeartbeatSenderCallback? = null
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private val editorFactoryListener = object : EditorFactoryListener {
         override fun editorCreated(event: EditorFactoryEvent) {
@@ -72,6 +76,37 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
 
         // Start the sender
         sender.start()
+
+        // Check CLI version in background (non-blocking)
+        checkCliVersion()
+    }
+
+    /**
+     * Check CLI version against server
+     */
+    private fun checkCliVersion() {
+        val apiEndpoint = settings.apiEndpoint
+        val webEndpoint = settings.webEndpoint
+
+        if (apiEndpoint.isNullOrEmpty() || webEndpoint.isNullOrEmpty()) {
+            return
+        }
+
+        versionChecker = VersionChecker(apiEndpoint, webEndpoint, settings.debug)
+
+        scope.launch {
+            try {
+                val socketClient = appService.getSocketClient()
+                val status = socketClient.getStatus()
+                val daemonVersion = status?.version
+
+                if (daemonVersion != null) {
+                    versionChecker?.checkVersion(daemonVersion, project)
+                }
+            } catch (e: Exception) {
+                // Silently ignore - version check is optional
+            }
+        }
     }
 
     /**
@@ -147,5 +182,7 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
         if (::collector.isInitialized) {
             collector.dispose()
         }
+        versionChecker?.dispose()
+        scope.cancel()
     }
 }

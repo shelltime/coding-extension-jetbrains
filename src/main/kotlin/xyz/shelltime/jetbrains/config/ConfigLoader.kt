@@ -165,7 +165,17 @@ class ConfigLoader {
             socketPath = fileConfig.socketPath ?: Constants.DEFAULT_SOCKET_PATH,
             heartbeatInterval = Constants.DEFAULT_FLUSH_INTERVAL_MS,
             debug = false,
-            exclude = fileConfig.exclude ?: emptyList()
+            exclude = fileConfig.exclude ?: emptyList(),
+            apiEndpoint = fileConfig.apiEndpoint,
+            webEndpoint = fileConfig.webEndpoint
         )
+    }
+
+    /**
+     * Get raw file config for accessing apiEndpoint/webEndpoint
+     */
+    fun getFileConfig(): ShellTimeFileConfig? {
+        val configFile = findConfigFile() ?: return null
+        return loadConfigFile(configFile)
     }
 }
