@@ -142,9 +142,12 @@ class HeartbeatDataTest {
         val response = VersionCheckResponse(isLatest = false, latestVersion = "2.0.0", version = "1.0.0")
         val jsonString = json.encodeToString(response)
 
-        assertTrue(jsonString.contains("\"isLatest\":false"))
-        assertTrue(jsonString.contains("\"latestVersion\":\"2.0.0\""))
-        assertTrue(jsonString.contains("\"version\":\"1.0.0\""))
+        // Deserialize back to verify correct JSON structure
+        val deserialized = json.decodeFromString<VersionCheckResponse>(jsonString)
+        assertEquals(response, deserialized)
+        assertFalse(deserialized.isLatest)
+        assertEquals("2.0.0", deserialized.latestVersion)
+        assertEquals("1.0.0", deserialized.version)
     }
 
     @Test
@@ -152,6 +155,9 @@ class HeartbeatDataTest {
         val jsonString = """{"isLatest":true,"latestVersion":"1.0.0","version":"1.0.0","unknownField":"value"}"""
         val response = json.decodeFromString<VersionCheckResponse>(jsonString)
 
+        // Verify unknown field was ignored and known fields were parsed correctly
         assertTrue(response.isLatest)
+        assertEquals("1.0.0", response.latestVersion)
+        assertEquals("1.0.0", response.version)
     }
 }
