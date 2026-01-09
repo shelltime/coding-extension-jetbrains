@@ -29,9 +29,11 @@ jobs:
 
       - name: Build Plugin
         run: ./gradlew buildPlugin
+        timeout-minutes: 20
 
       - name: Run Tests
         run: ./gradlew test
+        timeout-minutes: 20
 
       - name: Generate Coverage Report
         run: ./gradlew koverXmlReport

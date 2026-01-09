@@ -1,8 +1,10 @@
 package xyz.shelltime.jetbrains.version
 
-import com.intellij.ide.BrowserUtil
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
@@ -90,11 +92,8 @@ class VersionChecker(
                 "$message<br><br>Run: <code>$updateCommand</code>",
                 NotificationType.WARNING
             )
-            .addAction(object : com.intellij.notification.NotificationAction("Copy Update Command") {
-                override fun actionPerformed(
-                    e: com.intellij.notification.AnActionEvent,
-                    notification: com.intellij.notification.Notification
-                ) {
+            .addAction(object : NotificationAction("Copy Update Command") {
+                override fun actionPerformed(e: AnActionEvent, notification: Notification) {
                     val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
                     clipboard.setContents(java.awt.datatransfer.StringSelection(updateCommand), null)
                     notification.expire()

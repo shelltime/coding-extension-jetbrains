@@ -116,4 +116,48 @@ class HeartbeatDataTest {
         assertNull(response.platform)
         assertNull(response.goVersion)
     }
+
+    @Test
+    fun `VersionCheckResponse deserializes correctly with update available`() {
+        val jsonString = """{"isLatest":false,"latestVersion":"2.0.0","version":"1.0.0"}"""
+        val response = json.decodeFromString<VersionCheckResponse>(jsonString)
+
+        assertFalse(response.isLatest)
+        assertEquals("2.0.0", response.latestVersion)
+        assertEquals("1.0.0", response.version)
+    }
+
+    @Test
+    fun `VersionCheckResponse deserializes correctly when up to date`() {
+        val jsonString = """{"isLatest":true,"latestVersion":"1.0.0","version":"1.0.0"}"""
+        val response = json.decodeFromString<VersionCheckResponse>(jsonString)
+
+        assertTrue(response.isLatest)
+        assertEquals("1.0.0", response.latestVersion)
+        assertEquals("1.0.0", response.version)
+    }
+
+    @Test
+    fun `VersionCheckResponse serializes correctly`() {
+        val response = VersionCheckResponse(isLatest = false, latestVersion = "2.0.0", version = "1.0.0")
+        val jsonString = json.encodeToString(response)
+
+        // Deserialize back to verify correct JSON structure
+        val deserialized = json.decodeFromString<VersionCheckResponse>(jsonString)
+        assertEquals(response, deserialized)
+        assertFalse(deserialized.isLatest)
+        assertEquals("2.0.0", deserialized.latestVersion)
+        assertEquals("1.0.0", deserialized.version)
+    }
+
+    @Test
+    fun `VersionCheckResponse ignores unknown fields`() {
+        val jsonString = """{"isLatest":true,"latestVersion":"1.0.0","version":"1.0.0","unknownField":"value"}"""
+        val response = json.decodeFromString<VersionCheckResponse>(jsonString)
+
+        // Verify unknown field was ignored and known fields were parsed correctly
+        assertTrue(response.isLatest)
+        assertEquals("1.0.0", response.latestVersion)
+        assertEquals("1.0.0", response.version)
+    }
 }
