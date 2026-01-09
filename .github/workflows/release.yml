@@ -43,10 +43,12 @@ jobs:
       - name: Build Plugin
         if: ${{ steps.release.outputs.release_created }}
         run: ./gradlew buildPlugin
+        timeout-minutes: 20
 
       - name: Verify Plugin
         if: ${{ steps.release.outputs.release_created }}
         run: ./gradlew verifyPlugin
+        timeout-minutes: 20
 
       - name: Upload Build Artifact
         if: ${{ steps.release.outputs.release_created }}
