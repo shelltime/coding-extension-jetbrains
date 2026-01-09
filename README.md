@@ -2,10 +2,9 @@
 
 [![CI](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/main.yml/badge.svg)](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/main.yml)
 [![JetBrains Plugin](https://img.shields.io/badge/JetBrains-Install%20Plugin-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/29657-shelltime)
+[![codecov](https://codecov.io/gh/shelltime/coding-extension-jetbrains/graph/badge.svg?token=d7WgY0yRtw)](https://codecov.io/gh/shelltime/coding-extension-jetbrains)
 
-<a href="https://plugins.jetbrains.com/plugin/29657-shelltime">
-  <img src="https://plugins.jetbrains.com/embeddable/install/29657" width="245" height="48" alt="Install ShellTime Plugin"/>
-</a>
+<iframe width="245px" height="48px" src="https://plugins.jetbrains.com/embeddable/install/29657"></iframe>
 
 Track your coding time and productivity across projects with ShellTime. Automatic language detection, project analytics, and detailed activity insights.
 
@@ -15,8 +14,6 @@ Track your coding time and productivity across projects with ShellTime. Automati
 - **Automatic Time Tracking** - Tracks your coding activity in the background without interrupting your workflow
 - **Language Detection** - Automatically detects and categorizes time by programming language
 - **Project Analytics** - View time spent per project and workspace
-- **Git Integration** - Tracks activity by git branch
-- **Debug Session Awareness** - Distinguishes between coding and debugging time
 <!-- Plugin description end -->
 
 ## Prerequisites
@@ -53,15 +50,9 @@ shelltime init
 ```
 
 This command will:
-- Open your browser for GitHub authentication
+- Open your browser for authentication
 - Install shell hooks for your shell (zsh/fish/bash)
 - Start the background daemon service
-
-If you have an OpenToken from [shelltime.xyz](https://shelltime.xyz), you can initialize with:
-
-```bash
-shelltime init -t={YOUR_TOKEN}
-```
 
 ### Step 3: Enable Code Tracking
 
