@@ -1,6 +1,11 @@
 # ShellTime for JetBrains
 
 [![CI](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/main.yml/badge.svg)](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/main.yml)
+[![JetBrains Plugin](https://img.shields.io/badge/JetBrains-Install%20Plugin-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/29657-shelltime)
+
+<a href="https://plugins.jetbrains.com/plugin/29657-shelltime">
+  <img src="https://plugins.jetbrains.com/embeddable/install/29657" width="245" height="48" alt="Install ShellTime Plugin"/>
+</a>
 
 Track your coding time and productivity across projects with ShellTime. Automatic language detection, project analytics, and detailed activity insights.
 
@@ -14,25 +19,72 @@ Track your coding time and productivity across projects with ShellTime. Automati
 - **Debug Session Awareness** - Distinguishes between coding and debugging time
 <!-- Plugin description end -->
 
-## Requirements
+## Prerequisites
 
-This plugin requires the ShellTime daemon to be running. The daemon handles server communication, retry logic, and offline support.
+This plugin requires the ShellTime CLI and daemon to be running. Follow the steps below to set up.
 
-Install the ShellTime CLI and start the daemon:
+### Step 1: Install the ShellTime CLI
+
+Run this command in your terminal:
 
 ```bash
-# Install ShellTime CLI
-# (installation instructions at shelltime.xyz)
-
-# Start the daemon
-shelltime daemon start
+curl -sSL https://shelltime.xyz/i | bash
 ```
 
-Ensure your daemon config at `~/.shelltime/config.toml` has code tracking enabled:
+After installation, reload your shell configuration:
+
+```bash
+# For zsh
+source ~/.zshrc
+
+# For fish
+source ~/.config/fish/config.fish
+
+# For bash
+source ~/.bashrc
+```
+
+### Step 2: Initialize and Authenticate
+
+Run the initialization command:
+
+```bash
+shelltime init
+```
+
+This command will:
+- Open your browser for GitHub authentication
+- Install shell hooks for your shell (zsh/fish/bash)
+- Start the background daemon service
+
+If you have an OpenToken from [shelltime.xyz](https://shelltime.xyz), you can initialize with:
+
+```bash
+shelltime init -t={YOUR_TOKEN}
+```
+
+### Step 3: Enable Code Tracking
+
+Ensure your daemon config at `~/.shelltime/config.yaml` has code tracking enabled:
+
+```yaml
+codeTracking:
+  enabled: true
+```
+
+Or if using `~/.shelltime/config.toml`:
 
 ```toml
 [codeTracking]
 enabled = true
+```
+
+### Verify Installation
+
+Check that the daemon is running:
+
+```bash
+shelltime daemon status
 ```
 
 ## Installation
