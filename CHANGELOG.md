@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.4](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.3...v0.0.4) (2026-01-09)
+
+
+### Features
+
+* **version:** add CLI version check on extension startup ([f8391cd](https://github.com/shelltime/coding-extension-jetbrains/commit/f8391cdcbd30bdb21095c7382974a5e1fc1bdaf4))
+* **version:** add CLI version check on extension startup ([80f7df0](https://github.com/shelltime/coding-extension-jetbrains/commit/80f7df0d5349716d27dbbb25c2b52a450a06e740))
+
+
+### Bug Fixes
+
+* **build:** update platformVersion to 2024.1.7 to resolve cwm-plugin version mismatch ([81d253f](https://github.com/shelltime/coding-extension-jetbrains/commit/81d253fd26c3bca270b991f073b7876f3ce34669))
+* **docs:** update ci info ([fe23c93](https://github.com/shelltime/coding-extension-jetbrains/commit/fe23c93075e641b3b92921eab91c568bf99492ae))
+
+
+### Documentation
+
+* **readme:** add codecov badge and simplify documentation ([0c9d408](https://github.com/shelltime/coding-extension-jetbrains/commit/0c9d4081c2c0aeb63439705a0329025c3a21500a))
+* **readme:** improve installation instructions and add marketplace badge ([68b4e18](https://github.com/shelltime/coding-extension-jetbrains/commit/68b4e185baa21b297a401bc77a0881ad05e7beb6))
+
+
+### Build System
+
+* **gradle:** upgrade Gradle and dependencies to latest versions ([4225efc](https://github.com/shelltime/coding-extension-jetbrains/commit/4225efcec9cdb90921dda60b463c7651205f83f6))
+
+
+### Continuous Integration
+
+* **workflows:** add timeout-minutes to build and test steps ([9552ef8](https://github.com/shelltime/coding-extension-jetbrains/commit/9552ef87d6ebfb41bdbef50bf034906dfd77cd79))
+
+
+### Tests
+
+* **version:** add tests for CLI version check feature ([8a5b4b9](https://github.com/shelltime/coding-extension-jetbrains/commit/8a5b4b91afb6607404b56b08e29ce3f654689fc1))
+* **version:** add tests for CLI version check feature ([ef94101](https://github.com/shelltime/coding-extension-jetbrains/commit/ef9410138671cba26201fb3790d7b75e3e833d97))
+* **version:** fix async testing and improve test assertions ([fea7391](https://github.com/shelltime/coding-extension-jetbrains/commit/fea739154753d464979c1b2506a8d4e122c76cab))
+
 ## [0.0.3](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.2...v0.0.3) (2026-01-06)
 
 
