@@ -1,6 +1,6 @@
 # ShellTime for JetBrains
 
-[![CI](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/main.yml/badge.svg)](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/main.yml)
+[![CI](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/release.yml/badge.svg)](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/release.yml)
 [![JetBrains Plugin](https://img.shields.io/badge/JetBrains-Install%20Plugin-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/29657-shelltime)
 [![codecov](https://codecov.io/gh/shelltime/coding-extension-jetbrains/graph/badge.svg?token=d7WgY0yRtw)](https://codecov.io/gh/shelltime/coding-extension-jetbrains)
 
