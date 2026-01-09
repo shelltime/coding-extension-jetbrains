@@ -46,6 +46,7 @@ dependencies {
     }
 
     testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.mockk)
 }
 
@@ -99,9 +100,9 @@ intellijPlatform {
         ides {
             // Use specific IDE versions that exist instead of recommended()
             // which may select non-existent future versions
-            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.1.7")
-            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.4")
-            ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.3.1")
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.1.7")
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.5")
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.3.5")
         }
     }
 }
@@ -130,7 +131,7 @@ tasks {
     }
 
     wrapper {
-        gradleVersion = "8.12"
+        gradleVersion = "9.2.1"
     }
 
     publishPlugin {
