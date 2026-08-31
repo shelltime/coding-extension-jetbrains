@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.5](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.4...v0.0.5) (2026-08-31)
+
+
+### Continuous Integration
+
+* **workflows:** move Testing and Release jobs from jp-arm-oracle to ubuntu-latest ([#12](https://github.com/shelltime/coding-extension-jetbrains/issues/12)) ([a840c18](https://github.com/shelltime/coding-extension-jetbrains/commit/a840c18e59665785225e0b9d0e30156db018cc0d))
+
 ## [0.0.4](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.3...v0.0.4) (2026-01-09)
 
 
