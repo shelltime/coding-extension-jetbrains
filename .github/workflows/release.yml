@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: jp-arm-oracle
+    runs-on: ubuntu-latest
 
     steps:
       - name: Release Please
