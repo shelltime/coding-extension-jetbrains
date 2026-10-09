@@ -1,7 +1,9 @@
 package xyz.shelltime.jetbrains.utils
 
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
+import java.io.File
 
 class SystemUtilsTest {
 
@@ -21,6 +23,22 @@ class SystemUtilsTest {
     fun `getMachineName returns non-empty string`() {
         val machineName = SystemUtils.getMachineName()
         assertTrue(machineName.isNotEmpty())
+    }
+
+    @Test
+    fun `getMachineName is stable and has no surrounding whitespace`() {
+        val machineName = SystemUtils.getMachineName()
+        assertEquals(machineName, SystemUtils.getMachineName())
+        assertEquals(machineName.trim(), machineName)
+    }
+
+    @Test
+    fun `getMachineName matches the kernel hostname on Linux`() {
+        // The CLI daemon and the other editor plugins report gethostname(), and the
+        // server groups sessions per machine, so the names must be identical
+        val kernelHostname = File("/proc/sys/kernel/hostname")
+        assumeTrue(kernelHostname.isFile)
+        assertEquals(kernelHostname.readText().trim(), SystemUtils.getMachineName())
     }
 
     @Test

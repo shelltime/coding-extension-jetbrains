@@ -1,11 +1,14 @@
 package xyz.shelltime.jetbrains.config
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import xyz.shelltime.jetbrains.ShellTimeBundle
+import xyz.shelltime.jetbrains.services.ShellTimeProjectService
 import xyz.shelltime.jetbrains.services.ShellTimeService
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -72,6 +75,11 @@ class ShellTimeConfigurable : Configurable {
             heartbeatInterval = heartbeatIntervalField?.text?.toLongOrNull()
                 ?: Constants.DEFAULT_FLUSH_INTERVAL_MS
         )
+
+        // Apply the change to the running trackers, not only to the stored settings
+        ProjectManager.getInstance().openProjects
+            .filter { !it.isDisposed }
+            .forEach { it.service<ShellTimeProjectService>().updateSettings() }
     }
 
     override fun reset() {
