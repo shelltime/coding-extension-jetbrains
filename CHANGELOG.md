@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.5](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.4...v0.0.5) (2026-10-09)
+
+
+### Features
+
+* **branding:** add plugin icon from the new ShellTime logo ([#15](https://github.com/shelltime/coding-extension-jetbrains/issues/15)) ([ed0656a](https://github.com/shelltime/coding-extension-jetbrains/commit/ed0656a645707e21c0af346d23c6ec8cb58f8660))
+
+
+### Bug Fixes
+
+* **heartbeat:** stop losing, duplicating and misattributing coding activity ([#14](https://github.com/shelltime/coding-extension-jetbrains/issues/14)) ([2daef7d](https://github.com/shelltime/coding-extension-jetbrains/commit/2daef7d27b0cc4408937e91f70feb1fbe9310743))
+* **readme:** document current settings, heartbeat behavior and CI ([#16](https://github.com/shelltime/coding-extension-jetbrains/issues/16)) ([17dc626](https://github.com/shelltime/coding-extension-jetbrains/commit/17dc626552f5ebc38652fef959077db6c9258122))
+
+
+### Continuous Integration
+
+* **workflows:** move Testing and Release jobs from jp-arm-oracle to ubuntu-latest ([#12](https://github.com/shelltime/coding-extension-jetbrains/issues/12)) ([a840c18](https://github.com/shelltime/coding-extension-jetbrains/commit/a840c18e59665785225e0b9d0e30156db018cc0d))
+
 ## [0.0.4](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.3...v0.0.4) (2026-01-09)
 
 
