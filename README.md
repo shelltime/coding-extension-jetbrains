@@ -60,7 +60,7 @@ This command will:
 
 ### Step 3: Enable Code Tracking
 
-Ensure your daemon config at `~/.shelltime/config.yaml` has code tracking enabled:
+The daemon ignores editor heartbeats unless code tracking is enabled. Ensure your daemon config at `~/.shelltime/config.yaml` has:
 
 ```yaml
 codeTracking:
@@ -74,6 +74,8 @@ Or if using `~/.shelltime/config.toml`:
 enabled = true
 ```
 
+The plugin reads the same file when the IDE starts: `codeTracking.enabled` decides whether it tracks, and `socketPath` (if set) tells it where to find the daemon.
+
 ### Verify Installation
 
 Check that the daemon is running:
@@ -81,6 +83,8 @@ Check that the daemon is running:
 ```bash
 shelltime daemon status
 ```
+
+It should report `Code Tracking: enabled` and `Status: Running`. If the daemon is stopped, run `shelltime daemon install`.
 
 ## Installation
 
@@ -93,48 +97,58 @@ shelltime daemon status
 
 ### Manual Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/shelltime/coding-extension-jetbrains/releases)
+1. Download the plugin ZIP from the [Marketplace versions page](https://plugins.jetbrains.com/plugin/29657-shelltime/versions), or build it from source (see [Development](#development)). GitHub Releases carry release notes only, not the ZIP.
 2. Go to **Settings/Preferences** → **Plugins** → **⚙️** → **Install Plugin from Disk...**
-3. Select the downloaded ZIP file
+3. Select the ZIP file
 4. Restart your IDE
 
 ## Plugin Settings
 
 Configure the plugin at **Settings/Preferences** → **Tools** → **ShellTime**:
 
-* **Enable ShellTime tracking** - Enable/disable tracking (default: enabled)
-* **Enable debug logging** - Log debug information to IDE logs (default: disabled)
-* **Socket path** - Path to the ShellTime daemon socket (default: `/tmp/shelltime.sock`)
-* **Heartbeat flush interval** - Interval in milliseconds between heartbeat flushes (default: `120000`)
+* **Enable ShellTime tracking** - Enable/disable tracking (default: `codeTracking.enabled` from the ShellTime config, otherwise enabled)
+* **Enable debug logging** - Log debug information to the IDE log (default: disabled)
+* **Socket path** - Path to the ShellTime daemon socket (default: `socketPath` from the ShellTime config, otherwise `/tmp/shelltime.sock`)
+* **Heartbeat flush interval (ms)** - Time between heartbeat flushes (default: `120000`, i.e. 2 minutes)
+
+Changes apply right away to all open projects; turning tracking off still sends the heartbeats already collected. The settings are kept in memory only, so they return to the defaults above when the IDE restarts.
 
 ## Commands
 
 Access commands from **Tools** → **ShellTime**:
 
-* **Show Status** - Display daemon connection status and version info
-* **Flush Heartbeats** - Manually flush pending heartbeats to the daemon
+* **Show Status** - Display the daemon connection status, version, uptime and platform
+* **Flush Heartbeats** - Send pending heartbeats to the daemon now
 
 ## How It Works
 
 The plugin monitors your IDE activity and sends heartbeats to a local daemon:
 
-1. **Event Monitoring** - Tracks file opens, edits, saves, and cursor movements
-2. **Debouncing** - Batches events to reduce overhead (max 1 heartbeat per file per 30 seconds)
-3. **Periodic Flush** - Sends collected heartbeats to the daemon every 2 minutes
-4. **Offline Support** - Queues heartbeats when daemon is unavailable
+1. **Event Monitoring** - Tracks file opens and tab switches, edits, cursor movements and saves, including in tabs restored when a project opens. Each event is attributed to the project the file is open in.
+2. **Debouncing** - Batches events to reduce overhead (max 1 heartbeat per file per 30 seconds). Saves always count; repeated cursor or tab events at the same position are skipped.
+3. **Periodic Flush** - Sends collected heartbeats to the daemon every 2 minutes (configurable)
+4. **Offline Support** - Keeps heartbeats in memory when the daemon is unavailable and retries on the next flush. Closing a project or the IDE flushes whatever is still pending (waiting at most 2 seconds).
+
+Each heartbeat records the file, project, Git branch (through the bundled Git plugin), language, line count and cursor position, IDE and plugin versions, OS, and machine hostname. The hostname is the same one the ShellTime CLI reports, so IDE, terminal and AI activity on one computer are grouped together. Heartbeats sent while a debugger session is running are categorized as `debugging` instead of `coding`.
+
+Files outside the local file system are not tracked, and neither are paths inside the project under `.git`, `.idea`, `build`, `out`, `target`, `node_modules`, `.gradle`, `vendor` or `__pycache__`. These are matched relative to the project root, so a project that itself lives under e.g. `~/build/` is still tracked.
+
+## CLI Update Check
+
+When a project opens, the plugin asks the daemon for its version and checks it against the ShellTime API. If a newer CLI is available, a notification shows the update command (`curl -sSL <webEndpoint>/i | bash`) with a **Copy Update Command** button, at most once per project per session. The check runs only when the ShellTime config file sets both `apiEndpoint` and `webEndpoint`.
 
 ## Status Bar
 
 The plugin shows its status in the IDE status bar:
 
 - **ShellTime** - Connected and tracking
-- **ShellTime (offline)** - Daemon not running (heartbeats queued)
+- **ShellTime (offline)** - Daemon not reachable (heartbeats queued)
 
-Click the status bar item to view daemon status.
+The state updates on each flush, so it shows offline until the first heartbeats have been sent. Hover over it for the number of pending heartbeats, or click it to view daemon status.
 
 ## Supported IDEs
 
-This plugin supports all JetBrains IDEs based on IntelliJ Platform 2024.1+:
+This plugin supports JetBrains IDEs based on IntelliJ Platform 2024.1 through 2025.3 (builds `241`–`253.*`, set by `pluginSinceBuild`/`pluginUntilBuild` in `gradle.properties`):
 
 - IntelliJ IDEA (Community & Ultimate)
 - WebStorm
@@ -144,44 +158,63 @@ This plugin supports all JetBrains IDEs based on IntelliJ Platform 2024.1+:
 - RubyMine
 - CLion
 - Rider
+- RustRover
 - DataGrip
+- DataSpell
 - Android Studio
 
 ## Privacy
 
-The plugin communicates only with the local ShellTime daemon via Unix socket. The daemon syncs your coding activity to the ShellTime server for analytics and cross-device access.
+Heartbeats go only to the local ShellTime daemon via Unix socket. The daemon syncs your coding activity to the ShellTime server for analytics and cross-device access. The only network request the plugin makes itself is the CLI update check, which sends the daemon's version to your configured `apiEndpoint`.
 
 ## Development
 
 ### Building from Source
+
+Requires JDK 17 or newer (CI uses Java 21). The Gradle wrapper is included.
 
 ```bash
 # Clone the repository
 git clone https://github.com/shelltime/coding-extension-jetbrains.git
 cd coding-extension-jetbrains
 
-# Build the plugin
+# Build the plugin (ZIP in build/distributions/)
 ./gradlew buildPlugin
 
 # Run tests
 ./gradlew test
 
+# Generate a coverage report (build/reports/kover/html)
+./gradlew koverHtmlReport
+
+# Check compatibility against IntelliJ IDEA Community 2024.1, 2024.2 and 2024.3
+./gradlew verifyPlugin
+
 # Run IDE with plugin for testing
 ./gradlew runIde
 ```
+
+### Continuous Integration
+
+- **Testing** (`.github/workflows/testing.yml`) - On pushes and on pull requests to `main`: builds the plugin, runs the tests and uploads Kover coverage to Codecov.
+- **Release** (`.github/workflows/release.yml`) - On pushes to `main`, [Release Please](https://github.com/googleapis/release-please) maintains a release PR. Merging it creates the GitHub release, and the workflow then builds, verifies and publishes the plugin to the JetBrains Marketplace.
+- **Claude Code** (`claude.yml`, `claude-code-review.yml`) - Reviews pull requests and responds to `@claude` mentions.
+
+All jobs run on GitHub-hosted `ubuntu-latest` runners. Required secrets and the release process are described in [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ### Project Structure
 
 ```
 src/main/kotlin/xyz/shelltime/jetbrains/
 ├── config/          # Configuration loading and settings
-├── heartbeat/       # Heartbeat data models and collection
+├── heartbeat/       # Heartbeat data models, collection and sending
 ├── socket/          # Unix socket communication
 ├── listeners/       # IDE event listeners
 ├── services/        # Application and project services
 ├── actions/         # Menu actions
 ├── ui/              # Status bar widget
-└── utils/           # Utility functions
+├── utils/           # Utility functions
+└── version/         # CLI update check
 ```
 
 ## License
