@@ -2,16 +2,12 @@ package xyz.shelltime.jetbrains.services
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
-import com.intellij.openapi.editor.EditorFactory
-import com.intellij.openapi.editor.event.EditorFactoryEvent
-import com.intellij.openapi.editor.event.EditorFactoryListener
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatCollector
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSender
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSenderCallback
+import xyz.shelltime.jetbrains.utils.SystemUtils
 import xyz.shelltime.jetbrains.version.VersionChecker
 import kotlinx.coroutines.*
 
@@ -31,16 +27,9 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
     private var statusCallback: HeartbeatSenderCallback? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    private val editorFactoryListener = object : EditorFactoryListener {
-        override fun editorCreated(event: EditorFactoryEvent) {
-            val editor = event.editor
-            val editorProject = editor.project
-
-            // Only register listeners for editors in this project
-            if (editorProject == project) {
-                collector.registerEditor(editor)
-            }
-        }
+    companion object {
+        /** How long closing a project may wait for the last heartbeats to be sent */
+        private const val FINAL_FLUSH_TIMEOUT_MS = 2_000L
     }
 
     init {
@@ -71,8 +60,11 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
         // Set status callback if already registered
         statusCallback?.let { sender.setCallback(it) }
 
+        // Resolve the machine name once, off the EDT
+        scope.launch { SystemUtils.getMachineName() }
+
         // Register for editor events
-        EditorFactory.getInstance().addEditorFactoryListener(editorFactoryListener, this)
+        collector.start(this)
 
         // Start the sender
         sender.start()
@@ -158,25 +150,45 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
      */
     fun updateSettings() {
         if (!settings.enabled) {
-            // Disable tracking
+            // Disable tracking, but still send what was collected before
+            if (::collector.isInitialized) {
+                collector.stop()
+            }
             if (::sender.isInitialized) {
                 sender.stop()
+                scope.launch { sender.flush() }
             }
             return
         }
 
-        if (::collector.isInitialized) {
-            collector.setDebug(settings.debug)
+        if (!::collector.isInitialized) {
+            // Tracking was disabled when the project opened
+            start()
+            return
         }
 
-        if (::sender.isInitialized) {
-            sender.setDebug(settings.debug)
-            sender.setFlushInterval(settings.heartbeatInterval)
-        }
+        collector.setDebug(settings.debug)
+        collector.start(this)
+
+        sender.setDebug(settings.debug)
+        sender.setFlushInterval(settings.heartbeatInterval)
+        sender.start()
     }
 
     override fun dispose() {
+        if (::collector.isInitialized) {
+            collector.stop()
+        }
         if (::sender.isInitialized) {
+            sender.stop()
+            // Send what is still queued; this runs when the project closes and on IDE exit
+            try {
+                runBlocking(Dispatchers.IO) {
+                    withTimeoutOrNull(FINAL_FLUSH_TIMEOUT_MS) { sender.flush() }
+                }
+            } catch (e: Exception) {
+                // Best effort only
+            }
             sender.dispose()
         }
         if (::collector.isInitialized) {

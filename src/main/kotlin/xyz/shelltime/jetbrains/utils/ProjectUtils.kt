@@ -108,12 +108,25 @@ object ProjectUtils {
     /**
      * Check if a file should be excluded from tracking
      *
+     * Patterns are matched against the path inside the project, so a project that
+     * itself lives under a directory like `build/` or `out/` is still tracked.
+     *
      * @param filePath The file path to check
+     * @param projectBasePath The project root, if known
      * @return True if the file should be excluded
      */
-    fun shouldExclude(filePath: String): Boolean {
+    fun shouldExclude(filePath: String, projectBasePath: String? = null): Boolean {
+        val normalizedPath = filePath.replace('\\', '/')
+        val basePath = projectBasePath?.replace('\\', '/')?.trimEnd('/')
+        val path = if (!basePath.isNullOrEmpty() && normalizedPath.startsWith("$basePath/")) {
+            // Keep the leading slash so top-level directories still match
+            normalizedPath.substring(basePath.length)
+        } else {
+            normalizedPath
+        }
+
         // Exclude .git directory
-        if (filePath.contains("/.git/") || filePath.contains("\\.git\\")) {
+        if (path.contains("/.git/")) {
             return true
         }
 
@@ -130,7 +143,7 @@ object ProjectUtils {
         )
 
         for (pattern in excludePatterns) {
-            if (filePath.contains(pattern)) {
+            if (path.contains(pattern)) {
                 return true
             }
         }
