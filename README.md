@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/main/resources/META-INF/pluginIcon.svg" alt="ShellTime logo" width="96" height="96">
+</p>
+
 # ShellTime for JetBrains
 
 [![CI](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/release.yml/badge.svg)](https://github.com/shelltime/coding-extension-jetbrains/actions/workflows/release.yml)
