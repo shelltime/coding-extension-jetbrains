@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.extension.ExtendWith
+import xyz.shelltime.jetbrains.ThreadDumpOnTimeout
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatPayload
 import xyz.shelltime.jetbrains.heartbeat.testHeartbeats
 import java.io.File
@@ -23,6 +25,7 @@ import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
+@ExtendWith(ThreadDumpOnTimeout::class)
 class SocketClientTest {
 
     private lateinit var dir: File

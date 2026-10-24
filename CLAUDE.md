@@ -89,7 +89,8 @@ tests hung.
 ### Testing
 
 - JUnit 5 + MockK for mocking
-- Every test has a 60 s timeout (`build.gradle.kts`), and one that times out fails with every thread's stack and the
-  coroutine dump attached (`ThreadDumpOnTimeout`, registered through `META-INF/services`)
+- Every test has a 60 s timeout (`build.gradle.kts`). `@ExtendWith(ThreadDumpOnTimeout::class)` (the sender and socket
+  tests) attaches every thread's stack and the coroutine dump to one that times out. Don't turn on JUnit extension
+  autodetection: it also loads the IntelliJ test framework's extensions, whose thread leak tracker fails these tests
 - Kover for coverage
 - IntelliJ test framework for integration tests

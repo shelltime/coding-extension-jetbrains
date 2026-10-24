@@ -15,6 +15,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
+import xyz.shelltime.jetbrains.ThreadDumpOnTimeout
 import xyz.shelltime.jetbrains.config.Constants
 import xyz.shelltime.jetbrains.socket.HeartbeatDelivery
 import xyz.shelltime.jetbrains.socket.HeartbeatTransport
@@ -71,6 +73,7 @@ private class FakeDaemon : HeartbeatTransport {
     override fun isConnected(): Boolean = connected
 }
 
+@ExtendWith(ThreadDumpOnTimeout::class)
 class HeartbeatSenderTest {
 
     private lateinit var source: FakeSource
