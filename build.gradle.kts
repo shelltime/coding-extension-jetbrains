@@ -128,6 +128,13 @@ kover {
 tasks {
     test {
         useJUnitPlatform()
+        // A test that hangs fails with its stack trace instead of stalling the job until it times out
+        systemProperty("junit.jupiter.execution.timeout.default", "60s")
+        systemProperty("junit.jupiter.execution.timeout.thread.mode.default", "SEPARATE_THREAD")
+        testLogging {
+            events("passed", "skipped", "failed")
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
     }
 
     wrapper {

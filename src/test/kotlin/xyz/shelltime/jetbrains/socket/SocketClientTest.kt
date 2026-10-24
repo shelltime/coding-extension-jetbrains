@@ -132,14 +132,14 @@ class SocketClientTest {
     }
 
     @Test
-    fun `no reply from a daemon that still answers status counts as delivered`() = runBlocking {
-        // Daemons before 0.1.48 took heartbeats without replying
-        startDaemon { message -> if (typeOf(message) == "status") """{"version":"0.1.47"}""" else "" }
+    fun `no reply from a daemon that still takes connections counts as delivered`() = runBlocking {
+        // Daemons 0.1.42 to 0.1.47 took heartbeats without replying; 0.1.42 doesn't answer status
+        startDaemon { _ -> "" }
         val client = SocketClient(socketPath)
 
         assertEquals(HeartbeatDelivery.OK, client.sendHeartbeats(payload(1)))
         assertTrue(client.isConnected())
-        assertEquals(listOf("heartbeat", "status"), received.map { typeOf(it) })
+        assertEquals(listOf("heartbeat"), received.map { typeOf(it) })
     }
 
     @Test

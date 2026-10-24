@@ -7,6 +7,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.assertThrows
 import xyz.shelltime.jetbrains.config.Constants
 import xyz.shelltime.jetbrains.socket.HeartbeatDelivery
 import xyz.shelltime.jetbrains.socket.SocketClient
+import java.io.File
+import java.nio.file.Files
 
 class HeartbeatSenderTest {
 
@@ -30,6 +33,7 @@ class HeartbeatSenderTest {
     private lateinit var collector: HeartbeatCollector
     private lateinit var socket: SocketClient
     private lateinit var sender: HeartbeatSender
+    private lateinit var offlineFile: File
 
     @BeforeEach
     fun setUp() {
@@ -47,12 +51,15 @@ class HeartbeatSenderTest {
             replies.removeFirstOrNull() ?: HeartbeatDelivery.OK
         }
 
-        sender = HeartbeatSender(collector, socket)
+        // Never the daemon's real file: a running daemon would upload what lands there
+        offlineFile = File(Files.createTempDirectory("st-sender").toFile(), "coding-heartbeat.data.log")
+        sender = HeartbeatSender(collector, socket, offlineFile = offlineFile)
     }
 
     @AfterEach
     fun tearDown() {
         sender.dispose()
+        offlineFile.parentFile.deleteRecursively()
     }
 
     private fun collect(heartbeats: List<HeartbeatData>) = collected.addAll(heartbeats)
@@ -163,6 +170,33 @@ class HeartbeatSenderTest {
         }
 
         assertEquals(listOf("hb-0", "hb-1", "hb-2"), sender.drainPending().map { it.heartbeatId })
+    }
+
+    @Test
+    @Timeout(10)
+    fun `a flush that fails after the queue was drained leaves its heartbeats in the daemon's file`() {
+        // A Flush action still sending when the project closes
+        collect(testHeartbeats(3))
+        val sending = CompletableDeferred<Unit>()
+        val reply = CompletableDeferred<HeartbeatDelivery>()
+        coEvery { socket.sendHeartbeats(any()) } coAnswers {
+            sending.complete(Unit)
+            reply.await()
+        }
+
+        runBlocking {
+            val flush = async { sender.flush() }
+            sending.await()
+            assertEquals(emptyList<HeartbeatData>(), sender.drainPending())
+            reply.complete(HeartbeatDelivery.FAILED)
+            flush.await()
+        }
+
+        assertEquals(0, sender.getPendingCount())
+        val saved = offlineFile.readLines().flatMap {
+            kotlinx.serialization.json.Json.decodeFromString<HeartbeatPayload>(it).heartbeats
+        }
+        assertEquals(listOf("hb-0", "hb-1", "hb-2"), saved.map { it.heartbeatId })
     }
 
     @Test

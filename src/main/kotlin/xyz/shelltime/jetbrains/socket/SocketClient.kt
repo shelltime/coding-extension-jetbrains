@@ -74,10 +74,11 @@ class SocketClient(
 
         val response = send(json.encodeToString(message)) ?: return HeartbeatDelivery.FAILED
         if (response.isBlank()) {
-            // Daemons before 0.1.48 took heartbeats without ever replying, so retrying would
-            // resend them forever. A stopping daemon also closes without a reply when it drops
-            // a message, but it closes its listener first: one that still answers took them.
-            return if (getStatus() != null) HeartbeatDelivery.OK else HeartbeatDelivery.FAILED
+            // Daemons 0.1.42 to 0.1.47 took heartbeats without ever replying (0.1.42 doesn't
+            // answer status either), so retrying would resend them forever. A stopping daemon
+            // also closes without a reply when it drops a message, but it closes its listener
+            // first: one that still takes connections took them.
+            return if (testConnection()) HeartbeatDelivery.OK else HeartbeatDelivery.FAILED
         }
         val ack = try {
             json.decodeFromString<HeartbeatAck>(response)

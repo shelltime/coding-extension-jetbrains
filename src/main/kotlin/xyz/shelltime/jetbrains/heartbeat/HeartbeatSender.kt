@@ -6,6 +6,7 @@ import xyz.shelltime.jetbrains.config.Constants
 import xyz.shelltime.jetbrains.socket.HeartbeatDelivery
 import xyz.shelltime.jetbrains.socket.SocketClient
 import xyz.shelltime.jetbrains.utils.Logger
+import java.io.File
 import java.util.concurrent.ConcurrentLinkedDeque
 
 /**
@@ -38,13 +39,20 @@ class HeartbeatSender(
     private val collector: HeartbeatCollector,
     private val socketClient: SocketClient,
     flushInterval: Long = Constants.DEFAULT_FLUSH_INTERVAL_MS,
-    debug: Boolean = false
+    debug: Boolean = false,
+    private val offlineFile: File = OfflineStore.DEFAULT_FILE
 ) : Disposable {
     private val logger = Logger("Sender", debug)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var flushJob: Job? = null
     private var callback: HeartbeatSenderCallback? = null
     private var flushInterval = flushInterval.coerceAtLeast(Constants.MIN_FLUSH_INTERVAL_MS)
+
+    // Guards requeue against drainPending, so nothing is put back after the queue was drained
+    private val queueLock = Any()
+
+    @Volatile
+    private var drained = false
 
     // Heartbeats that failed to send (offline support), oldest first
     private val failedHeartbeats = ConcurrentLinkedDeque<HeartbeatData>()
@@ -159,11 +167,19 @@ class HeartbeatSender(
      * Put heartbeats back ahead of newer ones, dropping the oldest beyond MAX_PENDING_HEARTBEATS
      */
     private fun requeue(heartbeats: List<HeartbeatData>) {
-        for (hb in heartbeats.asReversed()) {
-            failedHeartbeats.addFirst(hb)
-        }
-        while (failedHeartbeats.size > Constants.MAX_PENDING_HEARTBEATS) {
-            failedHeartbeats.pollFirst()
+        synchronized(queueLock) {
+            if (drained) {
+                // The project closed while this flush was sending (a Flush action, or tracking
+                // turned off): its queue is already gone, so the daemon sends these later
+                OfflineStore.save(heartbeats, offlineFile)
+                return
+            }
+            for (hb in heartbeats.asReversed()) {
+                failedHeartbeats.addFirst(hb)
+            }
+            while (failedHeartbeats.size > Constants.MAX_PENDING_HEARTBEATS) {
+                failedHeartbeats.pollFirst()
+            }
         }
     }
 
@@ -180,13 +196,17 @@ class HeartbeatSender(
      * Take every heartbeat not yet delivered, oldest first, leaving none queued
      */
     fun drainPending(): List<HeartbeatData> {
-        val pending = mutableListOf<HeartbeatData>()
-        while (true) {
-            val hb = failedHeartbeats.pollFirst() ?: break
-            pending.add(hb)
+        synchronized(queueLock) {
+            // From now on a flush still sending leaves what it doesn't deliver in the daemon's file
+            drained = true
+            val pending = mutableListOf<HeartbeatData>()
+            while (true) {
+                val hb = failedHeartbeats.pollFirst() ?: break
+                pending.add(hb)
+            }
+            pending.addAll(collector.flush())
+            return pending
         }
-        pending.addAll(collector.flush())
-        return pending
     }
 
     /**
