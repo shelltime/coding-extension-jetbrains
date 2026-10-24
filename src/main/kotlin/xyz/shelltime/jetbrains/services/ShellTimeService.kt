@@ -71,12 +71,12 @@ class ShellTimeService {
         socketPath: String,
         heartbeatInterval: Long
     ) {
-        currentSettings = ShellTimeConfig(
+        // Keep the file's endpoints, which the settings page doesn't show
+        currentSettings = currentSettings.copy(
             enabled = enabled,
             socketPath = socketPath,
             heartbeatInterval = heartbeatInterval,
-            debug = debug,
-            exclude = currentSettings.exclude
+            debug = debug
         )
 
         // Update socket client
@@ -88,14 +88,7 @@ class ShellTimeService {
      * Reload configuration from file
      */
     fun reloadConfig() {
-        val fileConfig = configLoader.reloadConfig()
-        currentSettings = ShellTimeConfig(
-            enabled = fileConfig.enabled,
-            socketPath = fileConfig.socketPath,
-            heartbeatInterval = fileConfig.heartbeatInterval,
-            debug = fileConfig.debug,
-            exclude = fileConfig.exclude
-        )
+        currentSettings = configLoader.reloadConfig()
 
         socketClient.setSocketPath(currentSettings.socketPath)
         socketClient.setDebug(currentSettings.debug)

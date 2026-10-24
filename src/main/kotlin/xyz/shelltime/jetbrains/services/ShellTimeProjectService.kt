@@ -1,15 +1,23 @@
 package xyz.shelltime.jetbrains.services
 
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import xyz.shelltime.jetbrains.ShellTimeBundle
+import xyz.shelltime.jetbrains.config.Constants
+import xyz.shelltime.jetbrains.heartbeat.DaemonState
+import xyz.shelltime.jetbrains.heartbeat.FlushResult
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatCollector
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSender
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSenderCallback
+import xyz.shelltime.jetbrains.heartbeat.OfflineStore
 import xyz.shelltime.jetbrains.utils.SystemUtils
 import xyz.shelltime.jetbrains.version.VersionChecker
 import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Project-level service for ShellTime
@@ -30,6 +38,31 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
     companion object {
         /** How long closing a project may wait for the last heartbeats to be sent */
         private const val FINAL_FLUSH_TIMEOUT_MS = 2_000L
+
+        /** The tracking-disabled notice is shown once per IDE session, not per project */
+        private val disabledNoticeShown = AtomicBoolean(false)
+    }
+
+    /** Forwards sender updates to the status bar widget and explains a disabled daemon */
+    private val senderCallback = object : HeartbeatSenderCallback {
+        override fun onStatusChanged(state: DaemonState, pendingCount: Int) {
+            if (state == DaemonState.DISABLED) {
+                notifyTrackingDisabled()
+            }
+            statusCallback?.onStatusChanged(state, pendingCount)
+        }
+    }
+
+    private fun notifyTrackingDisabled() {
+        if (project.isDisposed || !disabledNoticeShown.compareAndSet(false, true)) return
+        NotificationGroupManager.getInstance()
+            .getNotificationGroup(Constants.NOTIFICATION_GROUP_ID)
+            .createNotification(
+                ShellTimeBundle.message("action.showStatus.title"),
+                ShellTimeBundle.message("notification.trackingDisabled"),
+                NotificationType.WARNING
+            )
+            .notify(project)
     }
 
     init {
@@ -57,8 +90,7 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
             debug = debug
         )
 
-        // Set status callback if already registered
-        statusCallback?.let { sender.setCallback(it) }
+        sender.setCallback(senderCallback)
 
         // Resolve the machine name once, off the EDT
         scope.launch { SystemUtils.getMachineName() }
@@ -66,8 +98,9 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
         // Register for editor events
         collector.start(this)
 
-        // Start the sender
+        // Start the sender, and show the daemon's state before the first flush
         sender.start()
+        scope.launch { sender.refreshState() }
 
         // Check CLI version in background (non-blocking)
         checkCliVersion()
@@ -107,7 +140,7 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
     fun setStatusCallback(callback: HeartbeatSenderCallback) {
         statusCallback = callback
         if (::sender.isInitialized) {
-            sender.setCallback(callback)
+            callback.onStatusChanged(sender.state, sender.getPendingCount())
         }
     }
 
@@ -130,10 +163,10 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
     /**
      * Force flush heartbeats
      *
-     * @return Number of heartbeats flushed
+     * @return How many heartbeats the daemon took, and its state
      */
-    fun forceFlush(): Int {
-        if (!::sender.isInitialized) return 0
+    fun forceFlush(): FlushResult {
+        if (!::sender.isInitialized) return FlushResult(0, DaemonState.DISCONNECTED)
         return sender.forceFlush()
     }
 
@@ -189,6 +222,8 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
             } catch (e: Exception) {
                 // Best effort only
             }
+            // Not delivered: the daemon sends them once it runs again
+            OfflineStore.save(sender.drainPending())
             sender.dispose()
         }
         if (::collector.isInitialized) {

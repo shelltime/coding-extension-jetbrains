@@ -14,13 +14,13 @@ import com.intellij.openapi.vfs.VirtualFile
 import xyz.shelltime.jetbrains.services.ShellTimeProjectService
 
 /**
- * Listener for file editor events (open, close, switch)
+ * Listener for file editor events (switching tabs)
+ *
+ * fileOpened isn't used: it fires for every tab restored with the project and for files
+ * opened in the background, which the user never looked at. A file the user opens
+ * becomes the selected one, which selectionChanged reports.
  */
 class FileEditorListener(private val project: Project) : FileEditorManagerListener {
-
-    override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
-        project.service<ShellTimeProjectService>().onFileSwitch(file)
-    }
 
     override fun selectionChanged(event: FileEditorManagerEvent) {
         event.newFile?.let { file ->

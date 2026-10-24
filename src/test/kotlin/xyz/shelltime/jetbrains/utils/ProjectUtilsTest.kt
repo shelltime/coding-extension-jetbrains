@@ -17,10 +17,12 @@ class ProjectUtilsTest {
     }
 
     @Test
-    fun `shouldExclude returns true for build directories`() {
-        assertTrue(ProjectUtils.shouldExclude("/project/build/classes/Main.class"))
-        assertTrue(ProjectUtils.shouldExclude("/project/out/production/file.class"))
-        assertTrue(ProjectUtils.shouldExclude("/project/target/classes/Main.class"))
+    fun `shouldExclude leaves build directory names to the project's excluded folders`() {
+        // Real sources live in packages named build, out, target or vendor
+        assertFalse(ProjectUtils.shouldExclude("/project/src/main/kotlin/com/acme/build/Foo.kt", "/project"))
+        assertFalse(ProjectUtils.shouldExclude("/project/internal/build/build.go", "/project"))
+        assertFalse(ProjectUtils.shouldExclude("/project/vendor/lib/lib.go", "/project"))
+        assertFalse(ProjectUtils.shouldExclude("/project/target/classes/Main.class", "/project"))
     }
 
     @Test
@@ -45,7 +47,7 @@ class ProjectUtilsTest {
 
     @Test
     fun `shouldExclude still excludes directories inside the project`() {
-        assertTrue(ProjectUtils.shouldExclude("/home/ci/build/repo/build/classes/Main.class", "/home/ci/build/repo"))
+        assertTrue(ProjectUtils.shouldExclude("/home/ci/build/repo/.idea/workspace.xml", "/home/ci/build/repo"))
         assertTrue(ProjectUtils.shouldExclude("/home/ci/build/repo/.git/config", "/home/ci/build/repo"))
         assertTrue(ProjectUtils.shouldExclude("/app/web/node_modules/pkg/index.js", "/app"))
     }
@@ -53,7 +55,7 @@ class ProjectUtilsTest {
     @Test
     fun `shouldExclude checks the full path for files outside the project`() {
         assertTrue(ProjectUtils.shouldExclude("/other/node_modules/pkg/index.js", "/app"))
-        assertTrue(ProjectUtils.shouldExclude("/application/build/Main.class", "/app"))
+        assertTrue(ProjectUtils.shouldExclude("/application/.gradle/caches/file", "/app"))
     }
 
     @Test

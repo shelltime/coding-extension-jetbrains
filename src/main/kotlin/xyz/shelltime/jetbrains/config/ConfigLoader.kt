@@ -7,47 +7,40 @@ import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
- * Loads and caches configuration from ~/.shelltime/config.toml or YAML variants
+ * Loads and caches configuration from the files the ShellTime CLI reads: the first of
+ * ~/.shelltime/config.yaml, config.yml and config.toml, with the first config.local.*
+ * merged over it (cli/model/config.go)
+ *
+ * @param configDir Directory holding the config files, ~/.shelltime by default
  */
-class ConfigLoader {
+class ConfigLoader(
+    private val configDir: String = expandPath(Constants.CONFIG_DIR)
+) {
     private var cachedConfig: ShellTimeConfig? = null
-    private var cachedMtime: Long = 0
-    private var cachedPath: String? = null
-
-    private val configPaths = listOf(
-        "~/.shelltime/config.toml",
-        "~/.shelltime/config.yaml",
-        "~/.shelltime/config.yml"
-    )
+    private var cachedSignature: List<Any>? = null
 
     /**
      * Get the configuration, loading from file if needed
      */
     fun getConfig(): ShellTimeConfig {
-        val configFile = findConfigFile()
+        val baseFile = findFile(Constants.BASE_CONFIG_FILES)
+        val localFile = findFile(Constants.LOCAL_CONFIG_FILES)
+        val signature = listOf(
+            baseFile?.absolutePath ?: "", getFileMtime(baseFile),
+            localFile?.absolutePath ?: "", getFileMtime(localFile)
+        )
 
-        if (configFile != null) {
-            val mtime = getFileMtime(configFile)
-            val path = configFile.absolutePath
+        // Return cached config if no file has changed
+        cachedConfig?.let { if (cachedSignature == signature) return it }
 
-            // Return cached config if file hasn't changed
-            if (cachedConfig != null && cachedPath == path && cachedMtime == mtime) {
-                return cachedConfig!!
-            }
-
-            // Load and cache new config
-            val fileConfig = loadConfigFile(configFile)
-            cachedConfig = mergeConfig(fileConfig)
-            cachedMtime = mtime
-            cachedPath = path
-            return cachedConfig!!
+        val config = if (baseFile != null) {
+            mergeConfig(mergeLocalConfig(loadConfigFile(baseFile), localFile?.let { loadConfigFile(it) }))
+        } else {
+            ShellTimeConfig()
         }
-
-        // Return default config if no file found
-        if (cachedConfig == null) {
-            cachedConfig = ShellTimeConfig()
-        }
-        return cachedConfig!!
+        cachedConfig = config
+        cachedSignature = signature
+        return config
     }
 
     /**
@@ -55,31 +48,16 @@ class ConfigLoader {
      */
     fun reloadConfig(): ShellTimeConfig {
         cachedConfig = null
-        cachedMtime = 0
-        cachedPath = null
+        cachedSignature = null
         return getConfig()
     }
 
-    private fun findConfigFile(): File? {
-        for (path in configPaths) {
-            val expandedPath = expandPath(path)
-            val file = File(expandedPath)
-            if (file.exists() && file.isFile) {
-                return file
-            }
-        }
-        return null
+    private fun findFile(names: List<String>): File? {
+        return names.map { File(configDir, it) }.firstOrNull { it.exists() && it.isFile }
     }
 
-    private fun expandPath(path: String): String {
-        return if (path.startsWith("~")) {
-            System.getProperty("user.home") + path.substring(1)
-        } else {
-            path
-        }
-    }
-
-    private fun getFileMtime(file: File): Long {
+    private fun getFileMtime(file: File?): Long {
+        if (file == null) return 0L
         return try {
             val attrs = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java)
             attrs.lastModifiedTime().toMillis()
@@ -106,18 +84,19 @@ class ConfigLoader {
 
         val codeTracking = toml.getTable("codeTracking")?.let { ct ->
             CodeTrackingConfig(
-                enabled = ct.getBoolean("enabled") ?: true,
+                enabled = ct.getBoolean("enabled"),
                 apiEndpoint = ct.getString("apiEndpoint"),
                 token = ct.getString("token")
             )
         }
 
+        // The CLI writes the endpoints as APIEndpoint and WebEndpoint in TOML
         @Suppress("UNCHECKED_CAST")
         return ShellTimeFileConfig(
             socketPath = toml.getString("socketPath"),
-            token = toml.getString("token"),
-            apiEndpoint = toml.getString("apiEndpoint"),
-            webEndpoint = toml.getString("webEndpoint"),
+            token = toml.getString("Token") ?: toml.getString("token"),
+            apiEndpoint = toml.getString("APIEndpoint") ?: toml.getString("apiEndpoint"),
+            webEndpoint = toml.getString("WebEndpoint") ?: toml.getString("webEndpoint"),
             codeTracking = codeTracking,
             flushCount = toml.getLong("flushCount")?.toInt(),
             gcTime = toml.getLong("gcTime")?.toInt(),
@@ -131,11 +110,11 @@ class ConfigLoader {
     @Suppress("UNCHECKED_CAST")
     private fun loadYamlConfig(file: File): ShellTimeFileConfig {
         val yaml = Yaml()
-        val data: Map<String, Any?> = yaml.load(file.inputStream()) ?: return ShellTimeFileConfig()
+        val data: Map<String, Any?> = file.inputStream().use { yaml.load(it) } ?: return ShellTimeFileConfig()
 
         val codeTracking = (data["codeTracking"] as? Map<String, Any?>)?.let { ct ->
             CodeTrackingConfig(
-                enabled = ct["enabled"] as? Boolean ?: true,
+                enabled = ct["enabled"] as? Boolean,
                 apiEndpoint = ct["apiEndpoint"] as? String,
                 token = ct["token"] as? String
             )
@@ -156,13 +135,41 @@ class ConfigLoader {
         )
     }
 
+    /**
+     * Local settings override base settings when set, as in the CLI's mergeConfig
+     */
+    private fun mergeLocalConfig(base: ShellTimeFileConfig, local: ShellTimeFileConfig?): ShellTimeFileConfig {
+        if (local == null) return base
+        return base.copy(
+            socketPath = local.socketPath?.takeIf { it.isNotEmpty() } ?: base.socketPath,
+            token = local.token?.takeIf { it.isNotEmpty() } ?: base.token,
+            apiEndpoint = local.apiEndpoint?.takeIf { it.isNotEmpty() } ?: base.apiEndpoint,
+            webEndpoint = local.webEndpoint?.takeIf { it.isNotEmpty() } ?: base.webEndpoint,
+            codeTracking = mergeCodeTracking(base.codeTracking, local.codeTracking),
+            exclude = local.exclude?.takeIf { it.isNotEmpty() } ?: base.exclude
+        )
+    }
+
+    /**
+     * Field by field: a local file that only sets the code tracking token keeps tracking on
+     */
+    private fun mergeCodeTracking(base: CodeTrackingConfig?, local: CodeTrackingConfig?): CodeTrackingConfig? {
+        if (local == null) return base
+        val merged = base ?: CodeTrackingConfig()
+        return merged.copy(
+            enabled = local.enabled ?: merged.enabled,
+            apiEndpoint = local.apiEndpoint?.takeIf { it.isNotEmpty() } ?: merged.apiEndpoint,
+            token = local.token?.takeIf { it.isNotEmpty() } ?: merged.token
+        )
+    }
+
     private fun mergeConfig(fileConfig: ShellTimeFileConfig): ShellTimeConfig {
         // Determine if enabled from codeTracking section or default
         val enabled = fileConfig.codeTracking?.enabled ?: true
 
         return ShellTimeConfig(
             enabled = enabled,
-            socketPath = fileConfig.socketPath ?: Constants.DEFAULT_SOCKET_PATH,
+            socketPath = fileConfig.socketPath?.takeIf { it.isNotEmpty() } ?: Constants.DEFAULT_SOCKET_PATH,
             heartbeatInterval = Constants.DEFAULT_FLUSH_INTERVAL_MS,
             debug = false,
             exclude = fileConfig.exclude ?: emptyList(),
@@ -175,7 +182,20 @@ class ConfigLoader {
      * Get raw file config for accessing apiEndpoint/webEndpoint
      */
     fun getFileConfig(): ShellTimeFileConfig? {
-        val configFile = findConfigFile() ?: return null
-        return loadConfigFile(configFile)
+        val baseFile = findFile(Constants.BASE_CONFIG_FILES) ?: return null
+        return mergeLocalConfig(
+            loadConfigFile(baseFile),
+            findFile(Constants.LOCAL_CONFIG_FILES)?.let { loadConfigFile(it) }
+        )
+    }
+
+    companion object {
+        private fun expandPath(path: String): String {
+            return if (path.startsWith("~")) {
+                System.getProperty("user.home") + path.substring(1)
+            } else {
+                path
+            }
+        }
     }
 }

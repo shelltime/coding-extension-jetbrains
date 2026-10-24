@@ -9,42 +9,47 @@ import java.io.File
  */
 object ProjectUtils {
     /**
-     * Get the project name (last 2 path components)
+     * Get the project name (last 2 path components of the project root)
      *
      * @param project The current project
      * @param file The current file
      * @return The project name
      */
     fun getProjectName(project: Project?, file: VirtualFile?): String {
-        // Try to get from project first
-        project?.basePath?.let { basePath ->
-            return extractLastPathComponents(basePath, 2)
+        val root = getProjectRootPath(project, file)
+        if (root.isEmpty()) {
+            return file?.name ?: "Unknown"
         }
-
-        // Fall back to file's parent directories
-        file?.let { f ->
-            val parent = f.parent?.path ?: return f.name
-            return extractLastPathComponents(parent, 2)
-        }
-
-        return "Unknown"
+        return extractLastPathComponents(root, 2)
     }
 
     /**
-     * Get the project root path
+     * Get the project root path: the project's base path for its own files; for a file
+     * outside it (another attached root, a file opened from elsewhere) the Git repository
+     * it is in, else its directory, as the other editors report it
      *
      * @param project The current project
      * @param file The current file (fallback)
      * @return The project root path
      */
     fun getProjectRootPath(project: Project?, file: VirtualFile?): String {
-        // Try project base path first
-        project?.basePath?.let { return it }
+        val basePath = project?.basePath
+        if (basePath != null && (file == null || isUnder(file.path, basePath))) {
+            return basePath
+        }
+
+        GitUtils.getRepositoryRoot(project, file)?.let { return it }
 
         // Fall back to file's parent directory
         file?.parent?.path?.let { return it }
 
-        return ""
+        return basePath ?: ""
+    }
+
+    private fun isUnder(path: String, root: String): Boolean {
+        val normalizedPath = path.replace('\\', '/')
+        val normalizedRoot = root.replace('\\', '/').trimEnd('/')
+        return normalizedPath == normalizedRoot || normalizedPath.startsWith("$normalizedRoot/")
     }
 
     /**
@@ -55,40 +60,7 @@ object ProjectUtils {
      */
     fun getLanguage(file: VirtualFile?): String {
         if (file == null) return "unknown"
-
-        // Try to get from file type
-        val fileType = file.fileType
-        val typeName = fileType.name.lowercase()
-
-        // Map common file types to language IDs
-        return when (typeName) {
-            "kotlin" -> "kotlin"
-            "java" -> "java"
-            "javascript" -> "javascript"
-            "typescript" -> "typescript"
-            "python" -> "python"
-            "go" -> "go"
-            "rust" -> "rust"
-            "c" -> "c"
-            "c++" -> "cpp"
-            "ruby" -> "ruby"
-            "php" -> "php"
-            "swift" -> "swift"
-            "scala" -> "scala"
-            "html" -> "html"
-            "css" -> "css"
-            "xml" -> "xml"
-            "json" -> "json"
-            "yaml" -> "yaml"
-            "markdown" -> "markdown"
-            "sql" -> "sql"
-            "shell script" -> "shellscript"
-            "plain_text" -> "plaintext"
-            else -> {
-                // Try to infer from extension
-                file.extension?.lowercase() ?: typeName
-            }
-        }
+        return LanguageIds.languageId(file.fileType.name, file.extension, file.name)
     }
 
     /**
@@ -130,15 +102,13 @@ object ProjectUtils {
             return true
         }
 
-        // Exclude common non-code paths
+        // Exclude paths that never hold the user's sources. Build output (build/, out/,
+        // target/) is left to the project's own excluded folders: a package can be named
+        // build too.
         val excludePatterns = listOf(
             "/.idea/",
-            "/build/",
-            "/out/",
-            "/target/",
             "/node_modules/",
             "/.gradle/",
-            "/vendor/",
             "/__pycache__/"
         )
 
