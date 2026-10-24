@@ -4,7 +4,8 @@ package xyz.shelltime.jetbrains.config
  * Code tracking specific configuration
  */
 data class CodeTrackingConfig(
-    val enabled: Boolean = true,
+    /** Null when the file doesn't say; tracking then defaults to on */
+    val enabled: Boolean? = null,
     val apiEndpoint: String? = null,
     val token: String? = null
 )

@@ -105,14 +105,24 @@ data class SocketMessage(
 )
 
 /**
- * Response from daemon status request
+ * Response from daemon status request. The daemon formats uptime itself, e.g. "2h 5m 3s".
  */
 @Serializable
 data class StatusResponse(
     val version: String? = null,
-    val uptime: Long? = null,
+    val startedAt: String? = null,
+    val uptime: String? = null,
     val platform: String? = null,
     val goVersion: String? = null
+)
+
+/**
+ * The daemon's reply to a heartbeat message: "ok", or "disabled" when it drops editor
+ * heartbeats because code tracking is off in its config
+ */
+@Serializable
+data class HeartbeatAck(
+    val status: String? = null
 )
 
 /**

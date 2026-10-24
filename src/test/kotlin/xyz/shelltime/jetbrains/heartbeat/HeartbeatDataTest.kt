@@ -97,13 +97,15 @@ class HeartbeatDataTest {
 
     @Test
     fun `StatusResponse deserializes correctly`() {
-        val jsonString = """{"version":"1.0.0","uptime":3600,"platform":"darwin/arm64","goVersion":"1.21"}"""
+        // What the daemon sends (cli/daemon/socket.go handleStatus)
+        val jsonString = """{"version":"1.0.0","startedAt":"2026-10-24T07:05:59.862759872Z","uptime":"1h 0m 0s","goVersion":"go1.27.1","platform":"darwin/arm64"}"""
         val response = json.decodeFromString<StatusResponse>(jsonString)
 
         assertEquals("1.0.0", response.version)
-        assertEquals(3600L, response.uptime)
+        assertEquals("1h 0m 0s", response.uptime)
+        assertEquals("2026-10-24T07:05:59.862759872Z", response.startedAt)
         assertEquals("darwin/arm64", response.platform)
-        assertEquals("1.21", response.goVersion)
+        assertEquals("go1.27.1", response.goVersion)
     }
 
     @Test

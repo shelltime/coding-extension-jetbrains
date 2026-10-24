@@ -2,6 +2,7 @@ package xyz.shelltime.jetbrains.heartbeat
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationInfo
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
@@ -12,6 +13,7 @@ import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.xdebugger.XDebuggerManager
@@ -36,7 +38,7 @@ class HeartbeatCollector(
     private val project: Project,
     private val pluginVersion: String,
     debug: Boolean = false
-) : Disposable {
+) : Disposable, HeartbeatSource {
     private val logger = Logger("Collector", debug)
     private val lastHeartbeat = ConcurrentHashMap<String, Long>()
     @Volatile
@@ -181,7 +183,17 @@ class HeartbeatCollector(
         if (file == null) return false
         if (!file.isInLocalFileSystem) return false
         if (ProjectUtils.shouldExclude(file.path, project.basePath)) return false
+        // Build output and other folders the project itself excludes
+        if (isExcludedFromProject(file)) return false
         return true
+    }
+
+    private fun isExcludedFromProject(file: VirtualFile): Boolean {
+        return try {
+            ProjectFileIndex.getInstance(project).isExcluded(file)
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**
@@ -204,9 +216,13 @@ class HeartbeatCollector(
 
         if (!isValidFile(file)) return
 
-        // The multicaster reports changes to every document in the IDE; only count
-        // documents that are open in an editor of this project.
-        val editor = findEditor(document) ?: return
+        // The multicaster reports changes to every document in the IDE. Only typing counts:
+        // the IDE is active and an editor of this project showing the document has focus.
+        // Reloads from disk (git checkout, formatters, an agent in a terminal) and the same
+        // file open in another project's window don't.
+        if (!ApplicationManager.getApplication().isActive) return
+        val editor = EditorFactory.getInstance().getEditors(document, project)
+            .firstOrNull { it.contentComponent.hasFocus() } ?: return
         val lineNumber = editor.caretModel.logicalPosition.line + 1
         val cursorPosition = editor.caretModel.logicalPosition.column
 
@@ -224,6 +240,8 @@ class HeartbeatCollector(
     private fun handleCaretChange(event: CaretEvent) {
         val editor = event.editor
         if (editor.project != project) return
+        // Programmatic caret moves while the IDE is in the background aren't the user's
+        if (!ApplicationManager.getApplication().isActive) return
 
         val document = editor.document
         val file = FileDocumentManager.getInstance().getFile(document) ?: return
@@ -245,6 +263,9 @@ class HeartbeatCollector(
      * Handle file switch events
      */
     fun handleFileSwitch(file: VirtualFile?) {
+        // The tab a project restores while the IDE is in the background, and tabs a debugger
+        // or another tool selects there, aren't the user's
+        if (!ApplicationManager.getApplication().isActive) return
         if (!isValidFile(file)) return
 
         val document = FileDocumentManager.getInstance().getDocument(file!!) ?: return
@@ -267,9 +288,10 @@ class HeartbeatCollector(
         if (!isValidFile(file)) return
 
         val document = FileDocumentManager.getInstance().getDocument(file!!) ?: return
-        val editor = findEditor(document)
-        val lineNumber = editor?.let { it.caretModel.logicalPosition.line + 1 }
-        val cursorPosition = editor?.caretModel?.logicalPosition?.column
+        // A refactoring saves files that aren't open; only saves of files the user has open count
+        val editor = findEditor(document) ?: return
+        val lineNumber = editor.caretModel.logicalPosition.line + 1
+        val cursorPosition = editor.caretModel.logicalPosition.column
 
         // Saves always bypass debouncing
         val heartbeat = createHeartbeat(file, document, true, lineNumber, cursorPosition)
@@ -285,7 +307,7 @@ class HeartbeatCollector(
      *
      * @return List of pending heartbeats, clearing the queue
      */
-    fun flush(): List<HeartbeatData> {
+    override fun flush(): List<HeartbeatData> {
         val heartbeats = mutableListOf<HeartbeatData>()
         while (true) {
             val heartbeat = pendingHeartbeats.poll() ?: break
@@ -298,7 +320,7 @@ class HeartbeatCollector(
     /**
      * Get the number of pending heartbeats
      */
-    fun getPendingCount(): Int = pendingHeartbeats.size
+    override fun getPendingCount(): Int = pendingHeartbeats.size
 
     /**
      * Set debug logging

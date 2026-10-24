@@ -11,6 +11,7 @@ import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.impl.status.EditorBasedWidget
 import com.intellij.util.Consumer
 import xyz.shelltime.jetbrains.ShellTimeBundle
+import xyz.shelltime.jetbrains.heartbeat.DaemonState
 import xyz.shelltime.jetbrains.heartbeat.HeartbeatSenderCallback
 import xyz.shelltime.jetbrains.services.ShellTimeProjectService
 import java.awt.event.MouseEvent
@@ -26,7 +27,7 @@ class ShellTimeStatusBarWidget(project: Project) : EditorBasedWidget(project), S
     }
 
     @Volatile
-    private var connected = false
+    private var state = DaemonState.DISCONNECTED
 
     @Volatile
     private var pendingCount = 0
@@ -36,18 +37,18 @@ class ShellTimeStatusBarWidget(project: Project) : EditorBasedWidget(project), S
     override fun getPresentation(): StatusBarWidget.WidgetPresentation = this
 
     override fun getText(): String {
-        return if (connected) {
-            ShellTimeBundle.message("statusbar.connected")
-        } else {
-            ShellTimeBundle.message("statusbar.disconnected")
+        return when (state) {
+            DaemonState.CONNECTED -> ShellTimeBundle.message("statusbar.connected")
+            DaemonState.DISABLED -> ShellTimeBundle.message("statusbar.disabled")
+            DaemonState.DISCONNECTED -> ShellTimeBundle.message("statusbar.disconnected")
         }
     }
 
     override fun getTooltipText(): String {
-        return if (connected) {
-            ShellTimeBundle.message("statusbar.tooltip.connected", pendingCount)
-        } else {
-            ShellTimeBundle.message("statusbar.tooltip.disconnected", pendingCount)
+        return when (state) {
+            DaemonState.CONNECTED -> ShellTimeBundle.message("statusbar.tooltip.connected", pendingCount)
+            DaemonState.DISABLED -> ShellTimeBundle.message("statusbar.tooltip.disabled", pendingCount)
+            DaemonState.DISCONNECTED -> ShellTimeBundle.message("statusbar.tooltip.disconnected", pendingCount)
         }
     }
 
@@ -75,8 +76,8 @@ class ShellTimeStatusBarWidget(project: Project) : EditorBasedWidget(project), S
         }
     }
 
-    override fun onStatusChanged(connected: Boolean, pendingCount: Int) {
-        this.connected = connected
+    override fun onStatusChanged(state: DaemonState, pendingCount: Int) {
+        this.state = state
         this.pendingCount = pendingCount
 
         // Update the status bar on EDT

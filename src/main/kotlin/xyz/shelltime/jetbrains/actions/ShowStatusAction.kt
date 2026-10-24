@@ -4,6 +4,7 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.runBlocking
@@ -22,11 +23,12 @@ class ShowStatusAction : AnAction() {
         val service = ShellTimeService.getInstance()
         val socketClient = service.getSocketClient()
 
-        runBlocking {
-            val status = socketClient.getStatus()
+        // The socket round trip must not block the UI thread
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val status = runBlocking { socketClient.getStatus() }
 
             val message = if (status != null && socketClient.isConnected()) {
-                val uptime = formatUptime(status.uptime ?: 0)
+                val uptime = status.uptime ?: "Unknown"
                 ShellTimeBundle.message(
                     "action.showStatus.connected",
                     status.version ?: "Unknown",
@@ -37,29 +39,15 @@ class ShowStatusAction : AnAction() {
                 ShellTimeBundle.message("action.showStatus.disconnected")
             }
 
-            showNotification(
-                project,
-                ShellTimeBundle.message("action.showStatus.title"),
-                message,
-                if (socketClient.isConnected()) NotificationType.INFORMATION else NotificationType.WARNING
-            )
+            if (!project.isDisposed) {
+                showNotification(
+                    project,
+                    ShellTimeBundle.message("action.showStatus.title"),
+                    message,
+                    if (socketClient.isConnected()) NotificationType.INFORMATION else NotificationType.WARNING
+                )
+            }
         }
-    }
-
-    private fun formatUptime(seconds: Long): String {
-        if (seconds <= 0) return "Unknown"
-
-        val days = seconds / 86400
-        val hours = (seconds % 86400) / 3600
-        val minutes = (seconds % 3600) / 60
-        val secs = seconds % 60
-
-        return buildString {
-            if (days > 0) append("${days}d ")
-            if (hours > 0) append("${hours}h ")
-            if (minutes > 0) append("${minutes}m ")
-            append("${secs}s")
-        }.trim()
     }
 
     private fun showNotification(

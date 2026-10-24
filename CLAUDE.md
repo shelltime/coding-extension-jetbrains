@@ -53,13 +53,20 @@ IDE Events (file open/edit/save)
     → FileEditorListener / FileSaveListener (plugin.xml listeners)
     → ShellTimeProjectService
     → HeartbeatCollector (debounces events, max 1 per file per 30s)
-    → HeartbeatSender (periodic flush every 2 min)
+    → HeartbeatSender (periodic flush every 2 min, at most 500 per message)
     → SocketClient (Unix socket to daemon)
 ```
 
+The daemon answers `{"status":"ok"}`, or `{"status":"disabled"}` when code tracking is off in its config.
+A connection closed without a reply counts as delivered only if the daemon still takes connections: daemons 0.1.42 to
+0.1.47 never replied, and a stopping daemon closes its listener before it drops a message. Otherwise `disabled`, no reply and
+no connection keep the heartbeats queued; on project close what is left goes to the daemon's resend file
+(`OfflineStore`, `~/.shelltime/coding-heartbeat.data.log`).
+
 ### Configuration Sources
 
-1. **File config**: `~/.shelltime/config.toml` or `~/.shelltime/config.yaml` (loaded by ConfigLoader)
+1. **File config**: the files the CLI reads, the first of `~/.shelltime/config.yaml`, `config.yml` and `config.toml` with
+   the first `config.local.*` merged over it (loaded by ConfigLoader when the IDE starts)
 2. **IDE settings**: Settings → Tools → ShellTime (ShellTimeConfigurable)
 
 ### Key Extension Points (plugin.xml)
@@ -71,8 +78,23 @@ IDE Events (file open/edit/save)
 - `applicationListeners`: FileSaveListener
 - `projectListeners`: FileEditorListener
 
+### Kotlin version
+
+The IDE provides the Kotlin standard library (`kotlin.stdlib.default.dependency=false`), so `build.gradle.kts` sets
+`apiVersion` to 1.9, the library of 2024.1 (`pluginSinceBuild=241`). Raise it only together with `pluginSinceBuild`: a
+newer API version also writes coroutine debug metadata an older library can't read, and with `-ea` (as in tests) a
+coroutine whose metadata kotlinx.coroutines read died with "Debug metadata version mismatch" and never resumed, so the
+tests hung.
+
 ### Testing
 
 - JUnit 5 + MockK for mocking
+- Every test has a 60 s timeout (`build.gradle.kts`). `@ExtendWith(ThreadDumpOnTimeout::class)` (the sender and socket
+  tests) attaches every thread's stack and the coroutine dump to one that times out
+- The IntelliJ test framework's JUnit 5 extensions run on every test, also plain ones: its thread leak tracker fails a
+  test that leaves a thread running, so stop the threads a test starts (see `SocketClientTest`'s fake daemon)
+- Don't mock `URL`'s constructors (`mockkConstructor(URL::class)`): every URL in the JVM goes through the mock, the class
+  loader's resource reads included, so a library that initializes during the test (kotlin-reflect, for MockK) reads the
+  mock's stream and hangs. `VersionCheckerTest` runs against a local `HttpServer`
 - Kover for coverage
 - IntelliJ test framework for integration tests
