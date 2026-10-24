@@ -23,6 +23,7 @@ import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 @ExtendWith(ThreadDumpOnTimeout::class)
@@ -33,6 +34,11 @@ class SocketClientTest {
     private var server: ServerSocketChannel? = null
     private val received = CopyOnWriteArrayList<String>()
 
+    // The daemon's threads, stopped before the test ends: the IntelliJ test framework fails a test
+    // that leaves a thread running
+    private val threads = CopyOnWriteArrayList<Thread>()
+    private val release = CountDownLatch(1)
+
     @BeforeEach
     fun setUp() {
         dir = Files.createTempDirectory("st-sock").toFile()
@@ -41,7 +47,9 @@ class SocketClientTest {
 
     @AfterEach
     fun tearDown() {
+        release.countDown()
         server?.close()
+        threads.forEach { it.join(TimeUnit.SECONDS.toMillis(5)) }
         dir.deleteRecursively()
     }
 
@@ -61,16 +69,20 @@ class SocketClientTest {
         val channel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         channel.bind(UnixDomainSocketAddress.of(socketPath))
         server = channel
-        Thread {
+        start {
             while (channel.isOpen) {
                 val conn = try {
                     channel.accept()
                 } catch (e: Exception) {
-                    return@Thread
+                    return@start
                 }
-                Thread { serve(conn, reply) }.apply { isDaemon = true }.start()
+                start { serve(conn, reply) }
             }
-        }.apply { isDaemon = true }.start()
+        }
+    }
+
+    private fun start(body: () -> Unit) {
+        threads.add(Thread(body).apply { isDaemon = true; start() })
     }
 
     private fun serve(conn: SocketChannel, reply: (String) -> String?) {
@@ -87,7 +99,7 @@ class SocketClientTest {
             received.add(message)
             val answer = reply(message)
             if (answer == null) {
-                Thread.sleep(TimeUnit.SECONDS.toMillis(30))
+                release.await(30, TimeUnit.SECONDS)
                 return
             }
             if (answer.isNotEmpty()) {

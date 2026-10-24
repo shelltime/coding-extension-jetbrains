@@ -11,9 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * Adds every thread's stack, and the coroutines when the coroutine debug agent runs, to a test
  * that timed out: the timeout's own trace shows only the test thread, which is usually parked
- * waiting for another one. Add it with @ExtendWith: autodetection would also load the IntelliJ test
- * framework's extensions (its thread leak tracker, its logged-error interceptor), which these plain
- * JUnit tests don't expect.
+ * waiting for another one. Add it to a test class with @ExtendWith.
  */
 class ThreadDumpOnTimeout : TestExecutionExceptionHandler {
     override fun handleTestExecutionException(context: ExtensionContext, throwable: Throwable) {

@@ -90,7 +90,11 @@ tests hung.
 
 - JUnit 5 + MockK for mocking
 - Every test has a 60 s timeout (`build.gradle.kts`). `@ExtendWith(ThreadDumpOnTimeout::class)` (the sender and socket
-  tests) attaches every thread's stack and the coroutine dump to one that times out. Don't turn on JUnit extension
-  autodetection: it also loads the IntelliJ test framework's extensions, whose thread leak tracker fails these tests
+  tests) attaches every thread's stack and the coroutine dump to one that times out
+- The IntelliJ test framework's JUnit 5 extensions run on every test, also plain ones: its thread leak tracker fails a
+  test that leaves a thread running, so stop the threads a test starts (see `SocketClientTest`'s fake daemon)
+- Don't mock `URL`'s constructors (`mockkConstructor(URL::class)`): every URL in the JVM goes through the mock, the class
+  loader's resource reads included, so a library that initializes during the test (kotlin-reflect, for MockK) reads the
+  mock's stream and hangs. `VersionCheckerTest` runs against a local `HttpServer`
 - Kover for coverage
 - IntelliJ test framework for integration tests
