@@ -263,6 +263,9 @@ class HeartbeatCollector(
      * Handle file switch events
      */
     fun handleFileSwitch(file: VirtualFile?) {
+        // The tab a project restores while the IDE is in the background, and tabs a debugger
+        // or another tool selects there, aren't the user's
+        if (!ApplicationManager.getApplication().isActive) return
         if (!isValidFile(file)) return
 
         val document = FileDocumentManager.getInstance().getDocument(file!!) ?: return

@@ -126,7 +126,7 @@ Access commands from **Tools** → **ShellTime**:
 
 The plugin monitors your IDE activity and sends heartbeats to a local daemon:
 
-1. **Event Monitoring** - Tracks switching to a file, typing, cursor movements and saves of open files. Each event is attributed to the project the file is open in. Only what you do counts: tabs restored when a project opens, edits while the IDE is in the background, files reloaded from disk (after `git checkout`, or a formatter or agent in a terminal) and files a refactoring saves without opening them are ignored.
+1. **Event Monitoring** - Tracks switching to a file, typing, cursor movements and saves of open files. Each event is attributed to the project the file is open in. Only what you do counts: tabs a project restores behind the selected one, tab switches and edits while the IDE is in the background, files reloaded from disk (after `git checkout`, or a formatter or agent in a terminal) and files a refactoring saves without opening them are ignored.
 2. **Debouncing** - Batches events to reduce overhead (max 1 heartbeat per file per 30 seconds). Saves always count; repeated cursor or tab events at the same position are skipped.
 3. **Periodic Flush** - Sends collected heartbeats to the daemon every 2 minutes (configurable), at most 500 per message
 4. **Offline Support** - Keeps heartbeats in memory (up to 5,000, oldest dropped first) while the daemon is unavailable or has code tracking turned off, and retries on the next flush. Closing a project or the IDE flushes whatever is still pending (waiting at most 2 seconds); what the daemon can't take then goes to `~/.shelltime/coding-heartbeat.data.log`, which the daemon resends once it runs.
