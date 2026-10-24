@@ -213,10 +213,11 @@ class ShellTimeProjectService(private val project: Project) : Disposable {
             collector.stop()
         }
         if (::sender.isInitialized) {
-            sender.stop()
             // Send what is still queued; this runs when the project closes and on IDE exit
             try {
                 runBlocking(Dispatchers.IO) {
+                    // A periodic flush cancelled mid-send puts its heartbeats back first
+                    sender.stopAndJoin()
                     withTimeoutOrNull(FINAL_FLUSH_TIMEOUT_MS) { sender.flush() }
                 }
             } catch (e: Exception) {

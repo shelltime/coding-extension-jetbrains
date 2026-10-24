@@ -93,6 +93,16 @@ class HeartbeatSender(
     }
 
     /**
+     * Stop the periodic flush timer and wait until a flush it was running has queued what it
+     * did not deliver again, so nothing reads the queue before that
+     */
+    suspend fun stopAndJoin() {
+        val job = flushJob
+        stop()
+        job?.cancelAndJoin()
+    }
+
+    /**
      * Flush pending heartbeats to the daemon, at most MAX_HEARTBEATS_PER_MESSAGE per message
      *
      * @return How many heartbeats the daemon took, and the state it was found in

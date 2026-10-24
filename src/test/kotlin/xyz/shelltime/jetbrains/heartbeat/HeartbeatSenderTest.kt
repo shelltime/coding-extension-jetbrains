@@ -5,11 +5,17 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.assertThrows
 import xyz.shelltime.jetbrains.config.Constants
 import xyz.shelltime.jetbrains.socket.HeartbeatDelivery
@@ -129,6 +135,34 @@ class HeartbeatSenderTest {
         assertThrows<CancellationException> { runBlocking { sender.flush() } }
 
         assertEquals(700, sender.getPendingCount())
+    }
+
+    @Test
+    @Timeout(10)
+    fun `stopAndJoin waits for a periodic flush cancelled mid-send to put its heartbeats back`() {
+        collect(testHeartbeats(3))
+        val sending = CompletableDeferred<Unit>()
+        coEvery { socket.sendHeartbeats(any()) } coAnswers {
+            sending.complete(Unit)
+            try {
+                awaitCancellation()
+            } finally {
+                // Closing the interrupted socket takes a moment
+                withContext(NonCancellable) { delay(200) }
+            }
+        }
+        // MIN_FLUSH_INTERVAL_MS would make the test wait 10 s for the first periodic flush
+        HeartbeatSender::class.java.getDeclaredField("flushInterval")
+            .apply { isAccessible = true }
+            .setLong(sender, 10)
+        sender.start()
+
+        runBlocking {
+            sending.await()
+            sender.stopAndJoin()
+        }
+
+        assertEquals(listOf("hb-0", "hb-1", "hb-2"), sender.drainPending().map { it.heartbeatId })
     }
 
     @Test
