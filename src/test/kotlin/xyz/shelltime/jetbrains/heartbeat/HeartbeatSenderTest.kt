@@ -38,10 +38,8 @@ private class FakeSource : HeartbeatSource {
 }
 
 /**
- * A daemon that answers each message with the next reply (OK once they run out), or with send
- *
- * Plain suspend functions, not MockK: coAnswers runs its block in a runBlocking of its own, which
- * the sender's cancellation never reaches, and on the IDE's test classpath that hung these tests.
+ * A daemon that answers each message with the next reply (OK once they run out), or with send,
+ * which suspends in the flush's own coroutine
  */
 private class FakeDaemon : HeartbeatTransport {
     private val messages = mutableListOf<List<String>>()

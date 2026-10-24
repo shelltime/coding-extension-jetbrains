@@ -80,7 +80,8 @@ no connection keep the heartbeats queued; on project close what is left goes to 
 
 ### Testing
 
-- JUnit 5 + MockK for mocking. Fake anything that suspends instead (see `HeartbeatSenderTest`): MockK runs a `coAnswers`
-  block in a `runBlocking` of its own, which cancellation never reaches, and on the IDE's test classpath that hung CI
+- JUnit 5 + MockK for mocking
+- Every test has a 60 s timeout (`build.gradle.kts`), and one that times out fails with every thread's stack and the
+  coroutine dump attached (`ThreadDumpOnTimeout`, registered through `META-INF/services`)
 - Kover for coverage
 - IntelliJ test framework for integration tests
