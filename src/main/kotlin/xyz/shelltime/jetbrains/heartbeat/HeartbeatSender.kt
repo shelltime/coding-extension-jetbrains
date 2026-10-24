@@ -4,7 +4,7 @@ import com.intellij.openapi.Disposable
 import kotlinx.coroutines.*
 import xyz.shelltime.jetbrains.config.Constants
 import xyz.shelltime.jetbrains.socket.HeartbeatDelivery
-import xyz.shelltime.jetbrains.socket.SocketClient
+import xyz.shelltime.jetbrains.socket.HeartbeatTransport
 import xyz.shelltime.jetbrains.utils.Logger
 import java.io.File
 import java.util.concurrent.ConcurrentLinkedDeque
@@ -26,6 +26,16 @@ enum class DaemonState {
 data class FlushResult(val sent: Int, val state: DaemonState)
 
 /**
+ * Where the sender takes newly collected heartbeats from
+ */
+interface HeartbeatSource {
+    /** Take every collected heartbeat, oldest first, leaving none queued */
+    fun flush(): List<HeartbeatData>
+
+    fun getPendingCount(): Int
+}
+
+/**
  * Callback interface for status updates
  */
 interface HeartbeatSenderCallback {
@@ -36,8 +46,8 @@ interface HeartbeatSenderCallback {
  * Periodically sends collected heartbeats to the daemon
  */
 class HeartbeatSender(
-    private val collector: HeartbeatCollector,
-    private val socketClient: SocketClient,
+    private val collector: HeartbeatSource,
+    private val socketClient: HeartbeatTransport,
     flushInterval: Long = Constants.DEFAULT_FLUSH_INTERVAL_MS,
     debug: Boolean = false,
     private val offlineFile: File = OfflineStore.DEFAULT_FILE

@@ -33,12 +33,23 @@ enum class HeartbeatDelivery {
 }
 
 /**
+ * What the heartbeat sender needs from the daemon
+ */
+interface HeartbeatTransport {
+    suspend fun sendHeartbeats(payload: HeartbeatPayload): HeartbeatDelivery
+
+    suspend fun getStatus(): StatusResponse?
+
+    fun isConnected(): Boolean
+}
+
+/**
  * Unix domain socket client for communicating with the ShellTime daemon
  */
 class SocketClient(
     private var socketPath: String = Constants.DEFAULT_SOCKET_PATH,
     debug: Boolean = false
-) {
+) : HeartbeatTransport {
     private val logger = Logger("SocketClient", debug)
     private val json = Json {
         ignoreUnknownKeys = true
@@ -51,7 +62,7 @@ class SocketClient(
     /**
      * Check if we successfully connected on the last attempt
      */
-    fun isConnected(): Boolean = lastConnectionSuccess
+    override fun isConnected(): Boolean = lastConnectionSuccess
 
     /**
      * Update the socket path
@@ -66,7 +77,7 @@ class SocketClient(
      * @param payload The heartbeat payload to send
      * @return Whether the daemon took the heartbeats
      */
-    suspend fun sendHeartbeats(payload: HeartbeatPayload): HeartbeatDelivery {
+    override suspend fun sendHeartbeats(payload: HeartbeatPayload): HeartbeatDelivery {
         val message = SocketMessage(
             type = "heartbeat",
             payload = payload
@@ -94,7 +105,7 @@ class SocketClient(
      *
      * @return StatusResponse if successful, null otherwise
      */
-    suspend fun getStatus(): StatusResponse? {
+    override suspend fun getStatus(): StatusResponse? {
         val message = SocketMessage(type = "status")
         val response = send(json.encodeToString(message))
 

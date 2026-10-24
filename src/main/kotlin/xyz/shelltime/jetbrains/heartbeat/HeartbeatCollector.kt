@@ -38,7 +38,7 @@ class HeartbeatCollector(
     private val project: Project,
     private val pluginVersion: String,
     debug: Boolean = false
-) : Disposable {
+) : Disposable, HeartbeatSource {
     private val logger = Logger("Collector", debug)
     private val lastHeartbeat = ConcurrentHashMap<String, Long>()
     @Volatile
@@ -307,7 +307,7 @@ class HeartbeatCollector(
      *
      * @return List of pending heartbeats, clearing the queue
      */
-    fun flush(): List<HeartbeatData> {
+    override fun flush(): List<HeartbeatData> {
         val heartbeats = mutableListOf<HeartbeatData>()
         while (true) {
             val heartbeat = pendingHeartbeats.poll() ?: break
@@ -320,7 +320,7 @@ class HeartbeatCollector(
     /**
      * Get the number of pending heartbeats
      */
-    fun getPendingCount(): Int = pendingHeartbeats.size
+    override fun getPendingCount(): Int = pendingHeartbeats.size
 
     /**
      * Set debug logging
