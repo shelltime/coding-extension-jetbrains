@@ -30,6 +30,7 @@ class ThreadDumpOnTimeout : TestExecutionExceptionHandler {
         for (name in System.getProperties().stringPropertyNames().filter { it.startsWith("kotlinx.coroutines") }.sorted()) {
             appendLine("$name=${System.getProperty(name)}")
         }
+        appendLine("kotlin-stdlib ${KotlinVersion.CURRENT}: ${codeSource("kotlin.KotlinVersion")}")
         appendLine("kotlinx-coroutines: ${codeSource("kotlinx.coroutines.Job")}")
         appendLine("kotlin-reflect: ${codeSource("kotlin.reflect.jvm.internal.KClassImpl")}")
         appendLine()
@@ -48,8 +49,10 @@ class ThreadDumpOnTimeout : TestExecutionExceptionHandler {
         append(coroutineDump())
     }
 
+    // The IDE's class loader leaves codeSource empty, so ask for the class file itself
     private fun codeSource(className: String): String = try {
-        Class.forName(className).protectionDomain?.codeSource?.location?.toString() ?: "unknown"
+        val type = Class.forName(className)
+        type.getResource("${type.simpleName}.class")?.toString() ?: "unknown"
     } catch (e: Throwable) {
         "not loaded ($e)"
     }

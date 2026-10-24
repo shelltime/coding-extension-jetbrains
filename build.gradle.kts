@@ -17,6 +17,13 @@ version = providers.gradleProperty("pluginVersion").get()
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        // The IDE provides the Kotlin standard library (kotlin.stdlib.default.dependency=false), and 2024.1, the oldest
+        // build pluginSinceBuild allows, ships 1.9. A newer API version also writes coroutine debug metadata that the
+        // IDE's library can't read: in the coroutines' debug mode (on with -ea, as in tests) reading it threw "Debug
+        // metadata version mismatch" and the coroutine was never resumed.
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+    }
 }
 
 repositories {

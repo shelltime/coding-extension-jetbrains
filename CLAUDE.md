@@ -78,6 +78,14 @@ no connection keep the heartbeats queued; on project close what is left goes to 
 - `applicationListeners`: FileSaveListener
 - `projectListeners`: FileEditorListener
 
+### Kotlin version
+
+The IDE provides the Kotlin standard library (`kotlin.stdlib.default.dependency=false`), so `build.gradle.kts` sets
+`apiVersion` to 1.9, the library of 2024.1 (`pluginSinceBuild=241`). Raise it only together with `pluginSinceBuild`: a
+newer API version also writes coroutine debug metadata an older library can't read, and with `-ea` (as in tests) a
+coroutine whose metadata kotlinx.coroutines read died with "Debug metadata version mismatch" and never resumed, so the
+tests hung.
+
 ### Testing
 
 - JUnit 5 + MockK for mocking
