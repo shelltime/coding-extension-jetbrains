@@ -28,7 +28,7 @@ enum class HeartbeatDelivery {
     /** The daemon dropped them: code tracking is off in its config */
     DISABLED,
 
-    /** No connection or no reply */
+    /** No connection, a timeout, or no reply from a daemon that is stopping */
     FAILED
 }
 
@@ -73,6 +73,12 @@ class SocketClient(
         )
 
         val response = send(json.encodeToString(message)) ?: return HeartbeatDelivery.FAILED
+        if (response.isBlank()) {
+            // Daemons before 0.1.48 took heartbeats without ever replying, so retrying would
+            // resend them forever. A stopping daemon also closes without a reply when it drops
+            // a message, but it closes its listener first: one that still answers took them.
+            return if (getStatus() != null) HeartbeatDelivery.OK else HeartbeatDelivery.FAILED
+        }
         val ack = try {
             json.decodeFromString<HeartbeatAck>(response)
         } catch (e: Exception) {

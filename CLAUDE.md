@@ -58,7 +58,9 @@ IDE Events (file open/edit/save)
 ```
 
 The daemon answers `{"status":"ok"}`, or `{"status":"disabled"}` when code tracking is off in its config.
-`disabled` and no reply keep the heartbeats queued; on project close what is left goes to the daemon's resend file
+A connection closed without a reply counts as delivered only if the daemon then answers `status`: daemons before 0.1.48
+never replied, and a stopping daemon closes its listener before it drops a message. Otherwise `disabled`, no reply and
+no connection keep the heartbeats queued; on project close what is left goes to the daemon's resend file
 (`OfflineStore`, `~/.shelltime/coding-heartbeat.data.log`).
 
 ### Configuration Sources

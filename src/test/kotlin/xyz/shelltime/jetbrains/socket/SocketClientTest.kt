@@ -47,6 +47,14 @@ class SocketClientTest {
      * answers when [reply] is null
      */
     private fun startDaemon(reply: String?) {
+        startDaemon { _ -> reply }
+    }
+
+    /**
+     * A daemon that answers each message with what [reply] returns for it: never when that
+     * is null, and nothing when it is empty (it closes the connection)
+     */
+    private fun startDaemon(reply: (String) -> String?) {
         val channel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         channel.bind(UnixDomainSocketAddress.of(socketPath))
         server = channel
@@ -62,7 +70,7 @@ class SocketClientTest {
         }.apply { isDaemon = true }.start()
     }
 
-    private fun serve(conn: SocketChannel, reply: String?) {
+    private fun serve(conn: SocketChannel, reply: (String) -> String?) {
         conn.use {
             val line = StringBuilder()
             val buffer = ByteBuffer.allocate(64 * 1024)
@@ -72,16 +80,23 @@ class SocketClientTest {
                 buffer.flip()
                 line.append(StandardCharsets.UTF_8.decode(buffer))
             }
-            received.add(line.toString().trim())
-            if (reply == null) {
+            val message = line.toString().trim()
+            received.add(message)
+            val answer = reply(message)
+            if (answer == null) {
                 Thread.sleep(TimeUnit.SECONDS.toMillis(30))
                 return
             }
-            conn.write(ByteBuffer.wrap((reply + "\n").toByteArray(StandardCharsets.UTF_8)))
+            if (answer.isNotEmpty()) {
+                conn.write(ByteBuffer.wrap((answer + "\n").toByteArray(StandardCharsets.UTF_8)))
+            }
         }
     }
 
     private fun payload(count: Int) = HeartbeatPayload(heartbeats = testHeartbeats(count))
+
+    private fun typeOf(message: String) =
+        Json.parseToJsonElement(message).jsonObject["type"]!!.jsonPrimitive.content
 
     @Test
     fun `ok reply delivers the heartbeats as one heartbeat message`() = runBlocking {
@@ -114,6 +129,31 @@ class SocketClientTest {
         val client = SocketClient(socketPath)
 
         assertEquals(HeartbeatDelivery.OK, client.sendHeartbeats(payload(1)))
+    }
+
+    @Test
+    fun `no reply from a daemon that still answers status counts as delivered`() = runBlocking {
+        // Daemons before 0.1.48 took heartbeats without replying
+        startDaemon { message -> if (typeOf(message) == "status") """{"version":"0.1.47"}""" else "" }
+        val client = SocketClient(socketPath)
+
+        assertEquals(HeartbeatDelivery.OK, client.sendHeartbeats(payload(1)))
+        assertTrue(client.isConnected())
+        assertEquals(listOf("heartbeat", "status"), received.map { typeOf(it) })
+    }
+
+    @Test
+    fun `no reply from a daemon that is stopping fails`() = runBlocking {
+        // A stopping daemon closes its listener, then drops the message it could not queue
+        startDaemon { _ ->
+            server?.close()
+            ""
+        }
+        val client = SocketClient(socketPath)
+
+        assertEquals(HeartbeatDelivery.FAILED, client.sendHeartbeats(payload(1)))
+        assertFalse(client.isConnected())
+        assertEquals(listOf("heartbeat"), received.map { typeOf(it) })
     }
 
     @Test
