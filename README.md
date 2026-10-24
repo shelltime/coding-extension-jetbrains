@@ -74,7 +74,9 @@ Or if using `~/.shelltime/config.toml`:
 enabled = true
 ```
 
-The plugin reads the same file when the IDE starts: `codeTracking.enabled` decides whether it tracks, and `socketPath` (if set) tells it where to find the daemon.
+Recent daemons pick the change up right away; older ones need a restart (`shelltime daemon reinstall`).
+
+The plugin reads the same files as the CLI: the first of `~/.shelltime/config.yaml`, `config.yml` and `config.toml`, with the first `config.local.yaml`, `config.local.yml` or `config.local.toml` merged over it. `codeTracking.enabled` decides whether it tracks, and `socketPath` (if set) tells it where to find the daemon.
 
 ### Verify Installation
 
@@ -124,14 +126,14 @@ Access commands from **Tools** → **ShellTime**:
 
 The plugin monitors your IDE activity and sends heartbeats to a local daemon:
 
-1. **Event Monitoring** - Tracks file opens and tab switches, edits, cursor movements and saves, including in tabs restored when a project opens. Each event is attributed to the project the file is open in.
+1. **Event Monitoring** - Tracks switching to a file, typing, cursor movements and saves of open files. Each event is attributed to the project the file is open in. Only what you do counts: tabs restored when a project opens, edits while the IDE is in the background, files reloaded from disk (after `git checkout`, or a formatter or agent in a terminal) and files a refactoring saves without opening them are ignored.
 2. **Debouncing** - Batches events to reduce overhead (max 1 heartbeat per file per 30 seconds). Saves always count; repeated cursor or tab events at the same position are skipped.
-3. **Periodic Flush** - Sends collected heartbeats to the daemon every 2 minutes (configurable)
-4. **Offline Support** - Keeps heartbeats in memory when the daemon is unavailable and retries on the next flush. Closing a project or the IDE flushes whatever is still pending (waiting at most 2 seconds).
+3. **Periodic Flush** - Sends collected heartbeats to the daemon every 2 minutes (configurable), at most 500 per message
+4. **Offline Support** - Keeps heartbeats in memory (up to 5,000, oldest dropped first) while the daemon is unavailable or has code tracking turned off, and retries on the next flush. Closing a project or the IDE flushes whatever is still pending (waiting at most 2 seconds); what the daemon can't take then goes to `~/.shelltime/coding-heartbeat.data.log`, which the daemon resends once it runs.
 
-Each heartbeat records the file, project, Git branch (through the bundled Git plugin), language, line count and cursor position, IDE and plugin versions, OS, and machine hostname. The hostname is the same one the ShellTime CLI reports, so IDE, terminal and AI activity on one computer are grouped together. Heartbeats sent while a debugger session is running are categorized as `debugging` instead of `coding`.
+Each heartbeat records the file, project, Git branch (through the bundled Git plugin), language (as the VS Code language id, e.g. `typescriptreact` or `shellscript`, so the same language from different editors adds up), line count and cursor position, IDE and plugin versions, OS, and machine hostname. The hostname is the same one the ShellTime CLI reports, so IDE, terminal and AI activity on one computer are grouped together. Heartbeats sent while a debugger session is running are categorized as `debugging` instead of `coding`.
 
-Files outside the local file system are not tracked, and neither are paths inside the project under `.git`, `.idea`, `build`, `out`, `target`, `node_modules`, `.gradle`, `vendor` or `__pycache__`. These are matched relative to the project root, so a project that itself lives under e.g. `~/build/` is still tracked.
+Files outside the local file system are not tracked, and neither are folders the project excludes (build output such as `build`, `out` or `target`) or paths inside the project under `.git`, `.idea`, `node_modules`, `.gradle` or `__pycache__`. These are matched relative to the project root, so a project that itself lives under e.g. `~/build/` is still tracked. A file outside the project's base directory counts toward the Git repository it is in.
 
 ## CLI Update Check
 
@@ -142,9 +144,10 @@ When a project opens, the plugin asks the daemon for its version and checks it a
 The plugin shows its status in the IDE status bar:
 
 - **ShellTime** - Connected and tracking
+- **ShellTime (tracking off)** - The daemon runs but has code tracking turned off in its config (heartbeats queued)
 - **ShellTime (offline)** - Daemon not reachable (heartbeats queued)
 
-The state updates on each flush, so it shows offline until the first heartbeats have been sent. Hover over it for the number of pending heartbeats, or click it to view daemon status.
+The state is checked when a project opens and updates on each flush. Hover over it for the number of pending heartbeats, or click it to view daemon status.
 
 ## Supported IDEs
 

@@ -53,13 +53,18 @@ IDE Events (file open/edit/save)
     → FileEditorListener / FileSaveListener (plugin.xml listeners)
     → ShellTimeProjectService
     → HeartbeatCollector (debounces events, max 1 per file per 30s)
-    → HeartbeatSender (periodic flush every 2 min)
+    → HeartbeatSender (periodic flush every 2 min, at most 500 per message)
     → SocketClient (Unix socket to daemon)
 ```
 
+The daemon answers `{"status":"ok"}`, or `{"status":"disabled"}` when code tracking is off in its config.
+`disabled` and no reply keep the heartbeats queued; on project close what is left goes to the daemon's resend file
+(`OfflineStore`, `~/.shelltime/coding-heartbeat.data.log`).
+
 ### Configuration Sources
 
-1. **File config**: `~/.shelltime/config.toml` or `~/.shelltime/config.yaml` (loaded by ConfigLoader)
+1. **File config**: the files the CLI reads, the first of `~/.shelltime/config.yaml`, `config.yml` and `config.toml` with
+   the first `config.local.*` merged over it (loaded by ConfigLoader when the IDE starts)
 2. **IDE settings**: Settings → Tools → ShellTime (ShellTimeConfigurable)
 
 ### Key Extension Points (plugin.xml)
