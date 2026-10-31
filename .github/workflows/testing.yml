@@ -31,6 +31,10 @@ jobs:
         run: ./gradlew buildPlugin
         timeout-minutes: 20
 
+      - name: Verify Plugin
+        run: ./gradlew verifyPlugin
+        timeout-minutes: 30
+
       - name: Run Tests
         run: ./gradlew test
         timeout-minutes: 20
