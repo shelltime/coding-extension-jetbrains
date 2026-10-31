@@ -2,6 +2,7 @@ import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 
 plugins {
     id("java")
@@ -86,7 +87,7 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild")
-            untilBuild = providers.gradleProperty("pluginUntilBuild")
+            untilBuild = provider { null }
         }
     }
 
@@ -110,6 +111,13 @@ intellijPlatform {
             create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.1.7")
             create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.5")
             create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.3.5")
+            // The newest 263 build (2026.3), EAP until it ships
+            select {
+                types = listOf(IntelliJPlatformType.IntellijIdea)
+                channels = listOf(ProductRelease.Channel.RELEASE, ProductRelease.Channel.EAP)
+                sinceBuild = "263"
+                untilBuild = "263.*"
+            }
         }
     }
 }

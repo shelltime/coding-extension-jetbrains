@@ -151,7 +151,7 @@ The state is checked when a project opens and updates on each flush. Hover over 
 
 ## Supported IDEs
 
-This plugin supports JetBrains IDEs based on IntelliJ Platform 2024.1 through 2025.3 (builds `241`–`253.*`, set by `pluginSinceBuild`/`pluginUntilBuild` in `gradle.properties`):
+This plugin supports JetBrains IDEs based on IntelliJ Platform 2024.1 and later (builds `241` and up, set by `pluginSinceBuild` in `gradle.properties`; there is no upper bound):
 
 - IntelliJ IDEA (Community & Ultimate)
 - WebStorm
