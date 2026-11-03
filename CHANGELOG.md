@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.6](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.5...v0.0.6) (2026-11-03)
+
+
+### Bug Fixes
+
+* **build:** keep the plugin available on IDE 263 and publish the real version ([#19](https://github.com/shelltime/coding-extension-jetbrains/issues/19)) ([925b7a5](https://github.com/shelltime/coding-extension-jetbrains/commit/925b7a55521991dd421499823730138a6091f00e))
+* **ci:** load the inline comment tool up front so Claude reviews post their findings ([#21](https://github.com/shelltime/coding-extension-jetbrains/issues/21)) ([84c2638](https://github.com/shelltime/coding-extension-jetbrains/commit/84c26383b6dae3d6891c1f2fe2cfcdf8780b44f4))
+
 ## [0.0.5](https://github.com/shelltime/coding-extension-jetbrains/compare/v0.0.4...v0.0.5) (2026-10-24)
 
 
